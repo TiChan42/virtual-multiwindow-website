@@ -87,7 +87,7 @@ export function VirtualViewportProvider({ children }: { children: React.ReactNod
   const [showMinimap, setShowMinimap] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
-      return url.searchParams.get("debug") === "true";
+      return url.searchParams.get("minimap") === "true";
     }
     return false;
   });
@@ -229,18 +229,23 @@ export function VirtualViewportProvider({ children }: { children: React.ReactNod
     const reg = registryRef.current;
     if (!reg) return;
     // console.log('[VirtualViewportProvider] heartbeat start', windowId);
+    let prevRect: { x: number; y: number; w: number; h: number } | null = null;
     const tick = window.setInterval(() => {
       const r = getCurrentWindowRect();
-      reg.send({ t: "heartbeat", id: windowId, rect: r });
-      // Update own window in state
-      setWindows(prev => ({
-        ...prev,
-        [windowId]: {
-          ...prev[windowId],
-          lastSeen: Date.now(),
-          rect: r,
-        }
-      }));
+      const hasChanged = !prevRect || Math.abs(prevRect.x - r.x) + Math.abs(prevRect.y - r.y) + Math.abs(prevRect.w - r.w) + Math.abs(prevRect.h - r.h) >= 2;
+      if (hasChanged) {
+        reg.send({ t: "heartbeat", id: windowId, rect: r });
+        // Update own window in state
+        setWindows(prev => ({
+          ...prev,
+          [windowId]: {
+            ...prev[windowId],
+            lastSeen: Date.now(),
+            rect: r,
+          }
+        }));
+        prevRect = r;
+      }
     }, 2000);
 
     return () => {
@@ -342,7 +347,7 @@ export function VirtualViewportProvider({ children }: { children: React.ReactNod
         )}
       </div>
     );
-  }, [ctx.layout, ctx.winRect, ctx.viewportOffset, children]);
+  }, [ctx.layout, ctx.winRect, ctx.viewportOffset, ctx.windows, ctx.assignedScreenId, ctx.windowId, children]);
 
   // Popup from VirtualWorld
   if (ctx?.permissionPending) {
