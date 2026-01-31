@@ -3,7 +3,7 @@ import { nanoid } from "nanoid";
 const KEY = "vwin:id";
 
 export function getThisWindowID(): string {
-  // sessionStorage: neue ID pro Browser-Session/Fenster, bleibt beim Reload stabil
+  // sessionStorage: new ID per browser session/window, remains stable on reload
   const existing = typeof window !== "undefined" ? window.sessionStorage.getItem(KEY) : null;
   if (existing) return existing;
 

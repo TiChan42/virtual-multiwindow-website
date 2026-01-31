@@ -23,12 +23,12 @@ export class WindowRegistry {
     this.bc = new BroadcastChannel(CHANNEL);
     this.bc.onmessage = (ev) => this.handle(ev.data as Msg);
 
-    // Lade aus localStorage beim Initialisieren
+    // Load from localStorage on initialization
     this.loadFromStorage();
 
     console.log(`[WindowRegistry] Created for window ${this.id} at ${new Date().toISOString()}`);
 
-    // Höre auf Storage-Änderungen für Cross-Tab-Sync
+    // Listen for storage changes for cross-tab sync
     this.storageListener = (ev) => {
       if (ev.key === STORAGE_KEY && ev.newValue) {
         try {
@@ -62,7 +62,7 @@ export class WindowRegistry {
 
   send(msg: Msg) {
     this.bc?.postMessage(msg);
-    // Nach dem Senden aktualisiere localStorage
+    // After sending, update localStorage
     this.saveToStorage();
   }
 
@@ -82,7 +82,7 @@ export class WindowRegistry {
         this.windows = JSON.parse(stored);
         console.log("[WindowRegistry] Loaded from storage:", this.windows);
         this.emit();
-        // Sofort GC, um veraltete zu entfernen
+        // Immediately GC to remove outdated entries
         this.gc();
       }
     } catch (e) {
@@ -159,10 +159,10 @@ export class WindowRegistry {
   }
 }
 
-// helper: compute "window rect" from permissionless browser props
+// Helper: compute "window rect" from permissionless browser props
 export function getCurrentWindowRect(): Rect {
   if (typeof window === "undefined") {
-    // SSR: Fallback auf 0/0/1920/1080
+    // SSR: Fallback to 0/0/1920/1080
     return { x: 0, y: 0, w: 1920, h: 1080 };
   }
   return {
@@ -173,7 +173,7 @@ export function getCurrentWindowRect(): Rect {
   };
 }
 
-// helper: compute viewport offset relative to frame for rendering
+// Helper: compute viewport offset relative to frame for rendering
 export function computeViewportOffset(layout: VflLayout, winRect: Rect): { x: number; y: number } {
   return {
     x: winRect.x - layout.frame.x,

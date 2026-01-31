@@ -1,36 +1,214 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Virtual Viewport System for Multi-Monitor Setups
 
-## Getting Started
+This project is an innovative web application that implements a **virtual viewport system** for multi-monitor environments. It allows multiple browser windows across different monitors to be treated as a cohesive virtual world, similar to desktop environments with multiple screens. The application leverages modern web APIs like the Screen Details API and BroadcastChannel to enable seamless interaction between windows.
 
-First, run the development server:
+## What is this?
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+In traditional web applications, each browser window is isolated and unaware of the position or size of other windows. This system breaks this isolation by providing:
+
+- **Virtual coordinates** that are consistent across all monitors.
+- **Real-time communication** between windows (e.g., for events, shared state, timers).
+- **A minimap** that visualizes all open windows and monitors.
+- **Automatic assignment** of windows to monitors based on their position.
+
+The system is particularly useful for applications like collaborative whiteboards, multi-screen presentations, or games that span multiple displays.
+
+## Key Features
+
+- **Multi-Monitor Support**: Detects and utilizes multiple monitors using the Screen Details API.
+- **Virtual Viewport**: Creates a shared coordinate space encompassing all monitors.
+- **Window Registry**: Tracks all open windows in real-time via BroadcastChannel.
+- **Shared State and Events**: Enables sharing data and events between windows.
+- **Minimap**: Displays an overview of all windows and monitors (optionally activatable).
+- **Permission Management**: Handles permissions for accessing monitor details gracefully.
+- **Responsive Design**: Adapts to various window sizes and positions.
+
+## Prerequisites
+
+- **Node.js** (version 18 or higher)
+- **npm**, **yarn**, **pnpm**, or **bun** as package manager
+- A modern web browser that supports the Screen Details API (e.g., Chrome 116+, Edge 116+)
+- Multiple monitors for full functionality (optional, works on a single monitor too)
+
+## Installation
+
+1. **Clone the repository**:
+   ```bash
+   git clone <repository-url>
+   cd background-website
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   npm install
+   # or
+   yarn install
+   # or
+   pnpm install
+   # or
+   bun install
+   ```
+
+3. **Start the development server**:
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   # or
+   pnpm dev
+   # or
+   bun dev
+   ```
+
+4. **Open browser**: Navigate to [http://localhost:3000](http://localhost:3000).
+
+## Usage
+
+### Getting Started
+
+1. **Launch the application**: After starting the server, the application opens in your browser.
+
+2. **Grant permissions**: On first visit, a dialog appears asking for permissions to access monitor details.
+   - **Recommended**: Click "Grant Permission and Scan All Monitors" to detect all monitors.
+   - **Alternative**: Choose "Continue Without Permission" to use only the current monitor.
+
+3. **Open multiple windows**: Open the URL in multiple browser windows or tabs to test the system. Each window is automatically integrated into the virtual space.
+
+### Enable Minimap
+
+Add `?minimap=true` to the URL to display the minimap:
+```
+http://localhost:3000?minimap=true
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The minimap shows:
+- **Blue rectangles**: Monitors
+- **Green/Yellow rectangles**: Windows (yellow for the current window)
+- **Purple highlight**: The assigned monitor of the current window
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Load Layout from URL
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+You can load a saved layout directly via the URL:
+```
+http://localhost:3000?layout=vfl1.<encoded-layout>
+```
 
-## Learn More
+The layout is automatically computed from the Screen Details API or manually.
 
-To learn more about Next.js, take a look at the following resources:
+### Development and Customization
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Edit the page**: Modify `src/app/page.tsx` to customize the content of the virtual world.
+- **Use hooks**: Utilize the provided hooks in your components:
+  - `useVirtualMouseCoordinates()`: For global mouse coordinates.
+  - `useVirtualInputs()`: For input events across windows.
+  - `useSharedState()`: For shared state.
+- **Styling**: The application uses Tailwind CSS for styling.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Architecture
 
-## Deploy on Vercel
+### Core Components
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **VirtualViewportProvider**: The main provider that supplies the virtual context.
+- **Minimap**: Visualizes the virtual space.
+- **PermissionDialog**: Manages permissions and layout selection.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Library (src/lib/virtual)
+
+- **coordinates.ts**: Helper functions for coordinate transformations.
+- **eventManager.ts**: BroadcastChannel-based event management.
+- **inputHandler.ts**: Collects and distributes input events.
+- **sharedState.ts**: Synchronizes state between windows.
+- **timeManager.ts**: Shared timers and timestamps.
+- **registry.ts**: Tracks windows and their positions.
+- **vfl.ts**: Virtual Frame Layout - logic for monitor layouts.
+- **screenUtils.ts**: Helper functions for Screen API.
+- **windowId.ts**: Generates unique IDs for windows.
+- **types.ts**: TypeScript types.
+- **hooks/**: React hooks for easy integration.
+
+### APIs and Technologies
+
+- **BroadcastChannel API**: For communication between tabs/windows.
+- **Screen Details API**: For detailed monitor information.
+- **SessionStorage**: For persistent window IDs.
+- **localStorage**: For layout and state storage.
+
+## API Reference
+
+### Hooks
+
+#### useVirtualMouseCoordinates()
+```typescript
+const coordinates = useVirtualMouseCoordinates();
+// Returns global mouse coordinates or null
+```
+
+#### useVirtualInputs()
+```typescript
+const inputs = useVirtualInputs();
+// Returns array of input events
+```
+
+#### useSharedState(key, initialValue)
+```typescript
+const [value, setValue] = useSharedState('myKey', 'initial');
+// Synchronizes value across all windows
+```
+
+#### useLayout()
+```typescript
+const { layout, permissionPending, requestPermission, computeWithoutPermission } = useLayout();
+// Manages the monitor layout
+```
+
+### Classes
+
+#### EventManager
+```typescript
+const em = new EventManager();
+em.addEventListener('myEvent', callback);
+em.dispatchEvent('myEvent', data);
+```
+
+#### SharedState
+```typescript
+const ss = new SharedState();
+ss.set('key', value);
+const value = ss.get('key');
+```
+
+#### TimeManager
+```typescript
+const tm = new TimeManager();
+tm.startTimer('id', 1000); // 1 second
+```
+
+## Contributing
+
+Contributions are welcome! Please:
+
+1. Fork the repository.
+2. Create a feature branch.
+3. Make your changes.
+4. Add tests (if applicable).
+5. Submit a pull request.
+
+### Development Guidelines
+
+- Use TypeScript for new code.
+- Keep comments in English and Doxygen style.
+- Test across multiple browsers and monitor setups.
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+
+## Support
+
+For questions or issues:
+- Open an issue on GitHub.
+- Check browser compatibility for Screen Details API.
+
+---
+
+Built with [Next.js](https://nextjs.org) and modern web APIs.

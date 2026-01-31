@@ -19,3 +19,15 @@ export type WindowSnapshot = {
   viewportOffset?: { x: number; y: number }; // relative to frame
   timestamp?: number;
 };
+
+export type VirtualContext = {
+  windowId: string;
+  layout: VflLayout | null;
+  winRect: { x: number; y: number; w: number; h: number };
+  viewportOffset: { x: number; y: number };
+  assignedScreenId?: string;
+  windows: Record<string, any>;
+  permissionPending: boolean;
+  requestPermission: () => Promise<void>;
+  computeWithoutPermission: () => void;
+};

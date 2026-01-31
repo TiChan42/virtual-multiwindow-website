@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import type { VflLayout } from "@/lib/virtual/types";
 
 interface MinimapProps {
@@ -44,7 +43,7 @@ export function Minimap({ layout, windows, windowId, assignedScreenId }: Minimap
           const isOwnScreen = screen.id === assignedScreenId;
           return (
             <div
-              key={screen.id}
+              key={`screen-${screen.id}`}
               className={`absolute border border-white ${isOwnScreen ? 'bg-purple-500/50' : 'bg-white/20'}`}
               style={{
                 left: screenLeft,
@@ -67,7 +66,7 @@ export function Minimap({ layout, windows, windowId, assignedScreenId }: Minimap
           const isOwnWindow = win.id === windowId;
           return (
             <div
-              key={win.id}
+              key={`window-${win.id}`}
               className={`absolute border border-yellow-400 ${isOwnWindow ? 'bg-yellow-400/70' : 'bg-green-500/30'}`}
               style={{
                 left: winLeft,

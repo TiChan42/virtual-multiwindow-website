@@ -1,7 +1,7 @@
 "use client";
 
 import { useContext, useState, useEffect } from 'react';
-import { VirtualCtx } from '@/components/virtual/VirtualViewportProvider';
+import { VirtualCtx } from '@/lib/virtual/export/virtualContext';
 
 export type Coordinates = {
   x: number;
@@ -9,7 +9,11 @@ export type Coordinates = {
 };
 
 /**
- * Konvertiert lokale Koordinaten (z.B. clientX, clientY) in globale virtuelle Koordinaten.
+ * @brief Converts local coordinates (e.g., clientX, clientY) to global virtual coordinates.
+ * @param localX The local X coordinate.
+ * @param localY The local Y coordinate.
+ * @param viewportOffset The current viewport offset.
+ * @return The global coordinates.
  */
 export function localToGlobal(localX: number, localY: number, viewportOffset: { x: number; y: number }): Coordinates {
   return {
@@ -19,7 +23,11 @@ export function localToGlobal(localX: number, localY: number, viewportOffset: { 
 }
 
 /**
- * Konvertiert globale virtuelle Koordinaten in lokale Koordinaten relativ zum aktuellen Viewport.
+ * @brief Converts global virtual coordinates to local coordinates relative to the current viewport.
+ * @param globalX The global X coordinate.
+ * @param globalY The global Y coordinate.
+ * @param viewportOffset The current viewport offset.
+ * @return The local coordinates.
  */
 export function globalToLocal(globalX: number, globalY: number, viewportOffset: { x: number; y: number }): Coordinates {
   return {
@@ -29,8 +37,9 @@ export function globalToLocal(globalX: number, globalY: number, viewportOffset: 
 }
 
 /**
- * Hook, der die aktuellen globalen Maus-Koordinaten im virtuellen Viewport bereitstellt.
- * Aktualisiert sich bei Mausbewegungen.
+ * @brief Hook that provides the current global mouse coordinates in the virtual viewport.
+ * Updates on mouse movements.
+ * @return The current mouse coordinates or null if not available.
  */
 export function useVirtualMouseCoordinates(): Coordinates | null {
   const ctx = useContext(VirtualCtx);
@@ -52,8 +61,12 @@ export function useVirtualMouseCoordinates(): Coordinates | null {
 }
 
 /**
- * Konvertiert globale virtuelle Koordinaten in Fensterkoordinaten (screenX, screenY).
- * Verwendet den frame-Ursprung des virtuellen Layouts.
+ * @brief Converts global virtual coordinates to window coordinates (screenX, screenY).
+ * Uses the frame origin of the virtual layout.
+ * @param globalX The global X coordinate.
+ * @param globalY The global Y coordinate.
+ * @param frame The frame origin.
+ * @return The window coordinates.
  */
 export function virtualToWindow(globalX: number, globalY: number, frame: { x: number; y: number }): Coordinates {
   return {
@@ -63,8 +76,12 @@ export function virtualToWindow(globalX: number, globalY: number, frame: { x: nu
 }
 
 /**
- * Konvertiert Fensterkoordinaten (screenX, screenY) in globale virtuelle Koordinaten.
- * Verwendet den frame-Ursprung des virtuellen Layouts.
+ * @brief Converts window coordinates (screenX, screenY) to global virtual coordinates.
+ * Uses the frame origin of the virtual layout.
+ * @param screenX The screen X coordinate.
+ * @param screenY The screen Y coordinate.
+ * @param frame The frame origin.
+ * @return The global virtual coordinates.
  */
 export function windowToVirtual(screenX: number, screenY: number, frame: { x: number; y: number }): Coordinates {
   return {

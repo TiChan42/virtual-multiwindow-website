@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useContext } from 'react';
-import { VirtualCtx } from '@/components/virtual/VirtualViewportProvider';
+import { VirtualCtx } from '@/lib/virtual/export/virtualContext';
 
 type InputEvent =
   | { type: 'keydown'; key: string; windowId: string; timestamp: number; }
