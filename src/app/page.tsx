@@ -1,12 +1,8 @@
 "use client";
 
-import { useContext, useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { VirtualCtx } from "@/lib/virtual/export/virtualContext";
-import { SharedState } from "@/lib/virtual/export/sharedState";
-import { useLayout } from "@/lib/virtual/hooks/useLayout";
-import { useRegistry } from "@/lib/virtual/hooks/useRegistry";
-import { useWindowId } from "@/lib/virtual/hooks/useWindowId";
-import { getMasterWindowId, isMasterWindow } from "@/lib/virtual/export/utils";
+import type { VirtualEngine } from "@/lib/virtual/core/VirtualEngine";
 
 type Particle = {
   id: string;
@@ -24,56 +20,41 @@ const ANIMATION_SPEED = 0.2;
 
 function ParticleAnimation() {
   const ctx = useContext(VirtualCtx);
-  const { layout } = useLayout();
-  const { windows } = useRegistry(useWindowId().windowId);
-  const windowId = useWindowId().windowId;
-  const [particles, setParticles] = useState<Particle[]>([]);
-  const currentParticlesRef = useRef<Particle[]>([]);
-  const sharedStateRef = useRef<SharedState | null>(null);
-  const animationRef = useRef<number | undefined>(undefined);
-  const frameCountRef = useRef(0);
-  const [bgColor, setBgColor] = useState(`hsl(${Math.random() * 360}, 30%, 20%)`);
-  const [isMaster, setIsMaster] = useState(false);
+  
+  // If context isn't ready, do nothing
+  if (!ctx || !ctx.layout) return null;
 
+  const { layout, isLeader, sharedData, engine } = ctx;
+  const virtualEngine = engine as VirtualEngine;
+
+  // 1. Background Color Management
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      document.body.style.backgroundColor = bgColor;
+    let color = sharedData?.bgColor;
+    // Leader initializes color
+    if (!color && isLeader && virtualEngine) {
+       color = `hsl(${Math.random() * 360}, 30%, 20%)`;
+       virtualEngine.setSharedData("bgColor", color);
     }
-  }, [bgColor]);
+    // All apply color
+    if (color && typeof window !== 'undefined') {
+        document.body.style.backgroundColor = color;
+    }
+  }, [sharedData?.bgColor, isLeader, virtualEngine]);
 
+  // 2. Particle Initialization (Leader Only)
   useEffect(() => {
-    sharedStateRef.current = new SharedState((key, value) => {
-      if (key === "particles") {
-        setParticles(value || []);
-      } else if (key === "bgColor") {
-        setBgColor(value || `hsl(${Math.random() * 360}, 30%, 20%)`);
-      } else if (key === "masterId") {
-        setIsMaster(value === windowId);
-      }
-    });
-
-    // Bestimme Master: Fenster mit niedrigster ID, einmalig
-    const existingMasterId = sharedStateRef.current.get("masterId");
-    if (!existingMasterId || existingMasterId === 'NaN') {
-      const masterId = getMasterWindowId(windows, windowId);
-      sharedStateRef.current.set("masterId", masterId);
-    }
-    const currentMasterId = sharedStateRef.current.get("masterId") || windowId;
-    const amIMaster = currentMasterId === windowId;
-    setIsMaster(amIMaster);
-
-    if (amIMaster) {
-      // Master: Initialisiere und berechne
-      const existingParticles = sharedStateRef.current.get("particles");
-      const existingBgColor = sharedStateRef.current.get("bgColor");
-
-      if (!existingParticles) {
+    if (isLeader && virtualEngine && (!sharedData?.particles || sharedData.particles.length === 0)) {
         const initParticles: Particle[] = [];
+        const frameW = layout.frame?.w || 1920; 
+        
+        console.log("[ParticleAnimation] Initializing Particles as Leader");
+
         for (let i = 0; i < PARTICLE_COUNT; i++) {
-          const centerX = Math.random() * 1920;
-          const centerY = Math.random() * 1080;
+          const centerX = Math.random() * (layout.frame?.w || 1000); 
+          const centerY = Math.random() * (layout.frame?.h || 1000);
           const orbitRadius = Math.random() * 300 + 50;
-          const size = i < 5 ? 0.7 * (layout?.frame.w || 1920) : Math.random() * 150 + 50;
+          const size = i < 5 ? 0.7 * frameW : Math.random() * 150 + 50;
+          
           initParticles.push({
             id: `p${i}`,
             centerX,
@@ -85,71 +66,52 @@ function ParticleAnimation() {
             size,
           });
         }
-        sharedStateRef.current.set("particles", initParticles);
-        currentParticlesRef.current = initParticles;
-      } else {
-        currentParticlesRef.current = existingParticles;
-      }
-
-      if (!existingBgColor) {
-        const initialBgColor = `hsl(${Math.random() * 360}, 30%, 20%)`;
-        sharedStateRef.current.set("bgColor", initialBgColor);
-      }
-    } else {
-      // Slave: Lade nur
-      const existingParticles = sharedStateRef.current.get("particles");
-      const existingBgColor = sharedStateRef.current.get("bgColor");
-      if (existingParticles) setParticles(existingParticles);
-      if (existingBgColor) setBgColor(existingBgColor);
+        virtualEngine.setSharedData("particles", initParticles);
     }
+  }, [isLeader, sharedData?.particles, layout, virtualEngine]);
 
-    return () => {
-      sharedStateRef.current?.destroy();
-    };
-  }, [layout, windows, windowId]);
-
-  useEffect(() => {
-    if (!isMaster || !ctx || !layout) return;
-
-    const animate = () => {
-      currentParticlesRef.current = currentParticlesRef.current.map(p => {
-        const newAngle = p.angle + p.speed;
-        return { ...p, angle: newAngle };
-      });
-
-      frameCountRef.current++;
-      if (frameCountRef.current % 3 === 0) {
-        sharedStateRef.current?.set("particles", [...currentParticlesRef.current]);
-      }
-
-      animationRef.current = requestAnimationFrame(animate);
-    };
-
-    animate();
-
-    return () => {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    };
-  }, [isMaster, ctx, layout]);
-
-  if (!ctx || !layout) return <div>Loading...</div>;
+  // 3. Rendering
+  const particles = (sharedData?.particles as Particle[]) || [];
+  
+  // Custom hook for time-based animation
+  const useTime = () => {
+      const [time, setTime] = useState(Date.now());
+      useEffect(() => {
+          let req: number;
+          const val = () => {
+              setTime(Date.now());
+              req = requestAnimationFrame(val);
+          }
+          req = requestAnimationFrame(val);
+          return () => cancelAnimationFrame(req);
+      }, []);
+      return time;
+  };
+  
+  const time = useTime(); 
 
   return (
-    <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
       {particles.map((p) => {
-        const x = p.centerX + Math.cos(p.angle) * p.radius;
-        const y = p.centerY + Math.sin(p.angle) * p.radius;
+        // Calculate position based on time
+        // angle = initialAngle + speed * time
+        const t = time / 1000;
+        const currentAngle = p.angle + p.speed * t * 60; // scale factor
+        const x = p.centerX + Math.cos(currentAngle) * p.radius;
+        const y = p.centerY + Math.sin(currentAngle) * p.radius;
+
         return (
           <div
             key={p.id}
+            className="absolute rounded-full blur-3xl opacity-60 mix-blend-screen"
             style={{
-              position: "absolute",
-              left: x - p.size,
-              top: y - p.size,
-              width: p.size * 2,
-              height: p.size * 2,
-              borderRadius: "50%",
+              left: x,
+              top: y,
+              width: p.size,
+              height: p.size,
               backgroundColor: `hsl(${p.hue}, 70%, 50%)`,
+              transform: "translate(-50%, -50%)",
+              transition: "none", 
             }}
           />
         );
@@ -158,10 +120,27 @@ function ParticleAnimation() {
   );
 }
 
+// Ensure Client Rendering
+function ClientOnly({ children }: { children: React.ReactNode }) {
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+    if (!mounted) return null;
+    return <>{children}</>;
+}
+
 export default function Page() {
   return (
-    <div style={{ position: "relative", width: "100%", height: "100vh" }}>
-      <ParticleAnimation />
-    </div>
+    <main className="relative w-full h-full min-h-screen overflow-hidden">
+        <ClientOnly>
+             <ParticleAnimation />
+        </ClientOnly>
+        
+        {/* Content Overlay */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+            <h1 className="text-6xl font-black text-white mix-blend-overlay tracking-tight select-none">
+             VIRTUAL
+            </h1>
+        </div>
+    </main>
   );
 }

@@ -57,12 +57,15 @@ export function Minimap({ layout, windows, windowId, assignedScreenId }: Minimap
         })}
         {/* Windows */}
         {Object.values(windows).map((win: any) => {
+          // Use virtualRect if available, otherwise fallback to physical rect which might be wrong in virtual space
+          const rect = win.virtualRect || win.rect;
+          
           const scaleX = w / frame.w;
           const scaleY = h / frame.h;
-          const winLeft = (win.rect.x - frame.x) * scaleX;
-          const winTop = (win.rect.y - frame.y) * scaleY;
-          const winWidth = win.rect.w * scaleX;
-          const winHeight = win.rect.h * scaleY;
+          const winLeft = (rect.x - frame.x) * scaleX;
+          const winTop = (rect.y - frame.y) * scaleY;
+          const winWidth = rect.w * scaleX;
+          const winHeight = rect.h * scaleY;
           const isOwnWindow = win.id === windowId;
           return (
             <div
@@ -74,7 +77,7 @@ export function Minimap({ layout, windows, windowId, assignedScreenId }: Minimap
                 width: winWidth,
                 height: winHeight,
               }}
-              title={`Window ${win.id}: ${win.rect.w}x${win.rect.h} @ (${win.rect.x}, ${win.rect.y})`}
+              title={`Window ${win.id}: ${rect.w}x${rect.h} @ (${rect.x}, ${rect.y})`}
             />
           );
         })}

@@ -1,60 +1,97 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 
 import { Minimap } from "./Minimap";
 import { PermissionDialog } from "./PermissionDialog";
 
 import type { VirtualContext } from "@/lib/virtual/types";
 import { VirtualCtx } from "@/lib/virtual/export/virtualContext";
-import { useWindowId } from "@/lib/virtual/hooks/useWindowId";
-import { useLayout } from "@/lib/virtual/hooks/useLayout";
-import { useRegistry } from "@/lib/virtual/hooks/useRegistry";
-import { useViewportOffset } from "@/lib/virtual/hooks/useViewportOffset";
-import { useMinimap } from "@/lib/virtual/hooks/useMinimap";
-
-type Ctx = VirtualContext;
+import { VirtualEngine } from "@/lib/virtual/core/VirtualEngine";
+import { useVirtualState } from "@/lib/virtual/hooks/useVirtualStore";
+import { getThisWindowID } from "@/lib/virtual/windowId";
+import { getCurrentWindowRect } from "@/lib/virtual/export/utils";
 
 export function VirtualViewportProvider({ children }: { children: React.ReactNode }) {
-  const { windowId, winRect } = useWindowId();
-  const { layout, permissionPending, requestPermission, computeWithoutPermission } = useLayout();
-  const { windows } = useRegistry(windowId);
-  const { viewportOffset, assignedScreenId } = useViewportOffset(layout, winRect, windowId);
-  const { showMinimap } = useMinimap();
+  // 1. Initialize Engine (Singleton per component lifecycle)
+  const engineRef = useRef<VirtualEngine | null>(null);
+  
+  if (!engineRef.current && typeof window !== "undefined") {
+    engineRef.current = new VirtualEngine(getThisWindowID(), getCurrentWindowRect());
+  }
+  const engine = engineRef.current;
 
-  const ctx: Ctx = {
-    windowId,
-    layout,
-    winRect,
-    viewportOffset,
-    assignedScreenId,
-    windows,
-    permissionPending,
-    requestPermission,
-    computeWithoutPermission,
+  // 2. Sync External Store (Replaces useState/useEffect for state)
+  // This ensures high-performance rendering without tearing
+  const state = useVirtualState(engine as VirtualEngine) || {
+    // Fallback initial state for SSR
+    windowId: '',
+    winRect: { x:0, y:0, w:0, h:0 },
+    windows: {},
+    layout: null,
+    viewportOffset: { x:0, y:0 },
+    isLeader: false,
+    permissionGranted: false,
+    sharedData: {},
+    assignedScreenId: undefined
   };
 
-  // Rendering logic from VirtualViewport
+  // 3. Drive the Engine with physical events
+  useEffect(() => {
+    if (!engine) return;
+
+    const updateRect = () => {
+        engine.updateRect(getCurrentWindowRect());
+    };
+
+    window.addEventListener("resize", updateRect);
+    // Poll for position changes (browsers don't emit event for moving windows)
+    const interval = setInterval(updateRect, 500);
+
+    return () => {
+        window.removeEventListener("resize", updateRect);
+        clearInterval(interval);
+        engine.dispose();
+    };
+  }, [engine]);
+
+  // 4. Request Permission Logic (Mapped to Context)
+  const requestPermission = async () => {
+    // For now simple pass-through or dummy
+    // In valid implementation this would trigger browser permission prompts
+    console.log("Request permission");
+  };
+
+  const computeWithoutPermission = () => {
+    console.log("Compute without permission");
+  };
+
+  // 5. Construct Legacy Context Compatibility Layer
+  const ctx: VirtualContext = useMemo(() => ({
+    ...state,
+    permissionPending: false, // simplified
+    requestPermission,
+    computeWithoutPermission,
+    engine // Expose engine for new components
+  }), [state, engine]);
+
+  // 6. Rendering
   const renderedChildren = useMemo(() => {
-    if (!ctx) {
-      return <>{children}</>;
-    }
+    if (!engine || !state.layout) return null; // Wait for layout
 
-    const frameW = ctx.layout?.frame.w ?? ctx.winRect.w ?? (typeof window !== 'undefined' ? window.innerWidth : 1920);
-    const frameH = ctx.layout?.frame.h ?? ctx.winRect.h ?? (typeof window !== 'undefined' ? window.innerHeight : 1080);
+    const { viewportOffset } = state;
+    const layout = state.layout;
 
-    const ox = ctx.viewportOffset.x;
-    const oy = ctx.viewportOffset.y;
+    const frameW = layout.frame.w; 
+    const frameH = layout.frame.h;
 
-    const containerW = typeof window !== 'undefined' ? window.innerWidth : 1920;
-    const containerH = typeof window !== 'undefined' ? window.innerHeight : 1080;
-    const maxOffsetX = Math.max(0, frameW - containerW);
-    const maxOffsetY = Math.max(0, frameH - containerH);
-    const clampedOX = Math.max(0, Math.min(ox, maxOffsetX));
-    const clampedOY = Math.max(0, Math.min(oy, maxOffsetY));
-
-    // Scaling removed as it makes the content too small
-
+    // Viewport Logic 
+    // This logic ensures the content stays absolute in virtual space
+    // while the window acts as a viewport moving over it.
+    
+    // We clamp offsets slightly to avoid flickering at edges if desired, 
+    // but the engine provides raw precise values.
+    
     return (
       <div style={{ width: "100vw", height: "100vh", overflow: "hidden", position: "relative" }}>
         <div
@@ -64,24 +101,26 @@ export function VirtualViewportProvider({ children }: { children: React.ReactNod
             top: 0,
             width: frameW,
             height: frameH,
-            transform: `translate(${-clampedOX}px, ${-clampedOY}px)`,
+            transform: `translate(${-viewportOffset.x}px, ${-viewportOffset.y}px)`,
             willChange: "transform",
             transformOrigin: 'top left',
           }}
         >
           {children}
         </div>
-        {showMinimap && ctx.layout && (
-          <Minimap layout={ctx.layout} windows={ctx.windows} windowId={ctx.windowId} assignedScreenId={ctx.assignedScreenId} />
-        )}
+        
+          <Minimap 
+            layout={layout} 
+            windows={state.windows} 
+            windowId={state.windowId} 
+            assignedScreenId={state.assignedScreenId} 
+          />
+        
       </div>
     );
-  }, [ctx.layout, ctx.winRect, ctx.viewportOffset, ctx.windows, ctx.assignedScreenId, ctx.windowId, children]);
+  }, [state, engine, children]);
 
-  // Popup from VirtualWorld
-  if (ctx?.permissionPending) {
-    return <PermissionDialog requestPermission={ctx.requestPermission} computeWithoutPermission={ctx.computeWithoutPermission} />;
-  }
+  if (!engine) return null;
 
   return <VirtualCtx.Provider value={ctx}>{renderedChildren}</VirtualCtx.Provider>;
 }

@@ -28,6 +28,7 @@ export async function getVflFromScreenDetails(): Promise<VflLayout | null> {
 }
 
 export function getLayoutFromUrl(): VflLayout | null {
+  if (typeof window === "undefined") return null;
   const url = new URL(window.location.href);
   const p = url.searchParams.get("layout");
   if (!p) return null;
@@ -35,6 +36,10 @@ export function getLayoutFromUrl(): VflLayout | null {
 }
 
 export function computeLayoutFromScreens(): VflLayout {
+  if (typeof window === "undefined") {
+    // Return a dummy layout for SSR
+    return { v: 1, frame: { x: 0, y: 0, w: 1920, h: 1080 }, screens: [{ id: "S1", x: 0, y: 0, w: 1920, h: 1080 }] };
+  }
   // Compute layout from screen properties (without permission)
   const scr = window.screen as any;
   const availLeft = scr.availLeft ?? 0;
@@ -55,6 +60,7 @@ export function computeLayoutFromScreens(): VflLayout {
 }
 
 export function getScreenIdFromUrl(): string | null {
+  if (typeof window === "undefined") return null;
   const url = new URL(window.location.href);
   const param = url.searchParams.get("screenId");
   if (!param) return null;
@@ -66,16 +72,49 @@ export function getScreenIdFromUrl(): string | null {
 }
 
 export function getScreenPositionFromUrl(): { x: number; y: number } | null {
+  if (typeof window === "undefined") return null;
   const url = new URL(window.location.href);
   const param = url.searchParams.get("screenPosition");
-  if (!param || !param.startsWith("pos1.")) return null;
+  if (!param) return null;
+
   try {
-    const json = decodeURIComponent(param.slice(5));
-    const pos = JSON.parse(json);
-    if (typeof pos.x === "number" && typeof pos.y === "number") {
-      return pos;
+    const decoded = decodeURIComponent(param);
+    
+    // 1. Try "pos1." prefix (custom format)
+    if (decoded.startsWith("pos1.")) {
+      try {
+        const parsed = JSON.parse(decoded.slice(5));
+        if (typeof parsed.x === "number" && typeof parsed.y === "number") return parsed;
+      } catch {}
     }
-  } catch {}
+    // Also check if the raw param started with pos1 before decode
+    if (param.startsWith("pos1.")) {
+       try {
+        const parsed = JSON.parse(decodeURIComponent(param.slice(5)));
+        if (typeof parsed.x === "number" && typeof parsed.y === "number") return parsed;
+       } catch {}
+    }
+
+    // 2. Try direct JSON
+    try {
+      const parsed = JSON.parse(decoded);
+      if (typeof parsed === 'object' && parsed !== null && 'x' in parsed && 'y' in parsed) {
+         return { x: Number(parsed.x), y: Number(parsed.y) };
+      }
+    } catch {}
+
+    // 3. Try "x,y" format
+    const parts = decoded.split(',');
+    if (parts.length === 2) {
+      const x = Number(parts[0]);
+      const y = Number(parts[1]);
+      if (!isNaN(x) && !isNaN(y)) {
+        return { x, y };
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to parse screenPosition:", e);
+  }
   return null;
 }
 

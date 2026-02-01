@@ -51,6 +51,20 @@ export function debounce<T extends (...args: any[]) => any>(
   };
 }
 
+import type { Rect } from "../types";
+
+export function getCurrentWindowRect(): Rect {
+  if (typeof window === "undefined") {
+    return { x: 0, y: 0, w: 1920, h: 1080 };
+  }
+  return {
+    x: window.screenX,
+    y: window.screenY,
+    w: window.innerWidth,
+    h: window.innerHeight,
+  };
+}
+
 /**
  * Throttles a function call.
  */

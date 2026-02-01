@@ -14,20 +14,38 @@ export type VflLayout = {
 export type WindowSnapshot = {
   id: string;
   lastSeen: number;
-  rect: Rect; // window rect in global coords (screenX/screenY + inner)
+  rect: Rect;
   assignedScreenId?: string;
-  viewportOffset?: { x: number; y: number }; // relative to frame
-  timestamp?: number;
+  virtualRect?: Rect; // Global virtual coordinates
+  viewportOffset?: { x: number; y: number }; 
+  timestamp: number;
 };
 
-export type VirtualContext = {
+export type VirtualState = {
   windowId: string;
+  winRect: Rect;
+  windows: Record<string, WindowSnapshot>;
   layout: VflLayout | null;
-  winRect: { x: number; y: number; w: number; h: number };
-  viewportOffset: { x: number; y: number };
   assignedScreenId?: string;
-  windows: Record<string, any>;
-  permissionPending: boolean;
+  viewportOffset: { x: number; y: number };
+  virtualRect?: Rect;
+  isLeader: boolean;
+  permissionGranted: boolean;
+  sharedData: Record<string, any>; // Arbitrary shared data (replaces SharedState)
+};
+
+export type VirtualEvent = 
+  | { type: 'HELLO'; payload: WindowSnapshot }
+  | { type: 'HEARTBEAT'; payload: WindowSnapshot }
+  | { type: 'GOODBYE'; payload: { id: string } }
+  | { type: 'LAYOUT_UPDATE'; payload: VflLayout }
+  | { type: 'LEADER_CLAIM'; payload: { id: string, timestamp: number } }
+  | { type: 'SHARED_DATA_UPDATE'; payload: { key: string, value: any } }; // New event
+
+export type VirtualContext = VirtualState & {
+  // Method Dispatches
   requestPermission: () => Promise<void>;
   computeWithoutPermission: () => void;
+  // Access to core engine
+  engine: any; // Type as VirtualEngine in implementation but avoid circular dep here if possible or just use 'any' / 'object'
 };

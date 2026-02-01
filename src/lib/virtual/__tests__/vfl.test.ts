@@ -1,0 +1,53 @@
+import { describe, it, expect } from 'vitest';
+import { normalizeLayout, assignScreenForWindow } from '@/lib/virtual/vfl';
+import type { VflLayout, Rect, VflScreen } from '@/lib/virtual/types';
+
+describe('VFL Core Logic (vfl.ts)', () => {
+
+  describe('normalizeLayout', () => {
+    it('sets v=1 if missing', () => {
+      // Provide at least one screen to satisfy Zod schema
+      const input: any = { 
+        screens: [{ id: 'S1', x: 0, y: 0, w: 100, h: 100 }] 
+      };
+      const out = normalizeLayout(input);
+      expect(out.v).toBe(1);
+    });
+
+    it('calculates bounding frame from screens automatically', () => {
+      const input: any = {
+        screens: [
+          { id: 'S1', x: 0, y: 0, w: 1000, h: 1000 },
+          { id: 'S2', x: 1000, y: 0, w: 1000, h: 1000 }
+        ]
+      };
+      const out = normalizeLayout(input);
+      expect(out.frame).toEqual({ x: 0, y: 0, w: 2000, h: 1000 });
+    });
+  });
+
+  describe('assignScreenForWindow', () => {
+    const screens: VflScreen[] = [
+      { id: 'S1', x: 0, y: 0, w: 1920, h: 1080 },
+      { id: 'S2', x: 1920, y: 0, w: 1920, h: 1080 },
+    ];
+
+    it('identifies screen based on majority overlap', () => {
+      // Window mostly on S2
+      const win: Rect = { x: 1900, y: 100, w: 400, h: 400 }; 
+      // S1 range: 0-1920. S2 range: 1920-3840.
+      // Overlap S1: 20px (1900 to 1920)
+      // Overlap S2: 380px (1920 to 2300)
+      
+      const { screenId } = assignScreenForWindow({ windowId: 'w', winRect: win, screens });
+      expect(screenId).toBe('S2');
+    });
+
+    it('defaults to first screen if no overlap', () => {
+      // Window way out in boonies
+      const win: Rect = { x: 9999, y: 9999, w: 100, h: 100 };
+      const { screenId } = assignScreenForWindow({ windowId: 'w', winRect: win, screens });
+      expect(screenId).toBe('S1');
+    });
+  });
+});
