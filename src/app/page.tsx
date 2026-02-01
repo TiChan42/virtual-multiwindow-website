@@ -16,12 +16,11 @@ type Particle = {
   angle: number;
   speed: number;
   hue: number;
-  hueSpeed: number;
   size: number;
 };
 
-const PARTICLE_COUNT = 17;
-const ANIMATION_SPEED = 0.1;
+const PARTICLE_COUNT = 22;
+const ANIMATION_SPEED = 0.2;
 
 function ParticleAnimation() {
   const ctx = useContext(VirtualCtx);
@@ -80,10 +79,9 @@ function ParticleAnimation() {
             centerX,
             centerY,
             radius: orbitRadius,
-            angle: Math.random() * Math.PI * 2,
+            angle: 0,
             speed: (Math.random() * 0.01 + 0.005) * ANIMATION_SPEED,
             hue: Math.random() * 360,
-            hueSpeed: Math.random() * 1 + 0.2,
             size,
           });
         }
@@ -116,8 +114,7 @@ function ParticleAnimation() {
     const animate = () => {
       currentParticlesRef.current = currentParticlesRef.current.map(p => {
         const newAngle = p.angle + p.speed;
-        const newHue = (p.hue + p.hueSpeed) % 360;
-        return { ...p, angle: newAngle, hue: newHue };
+        return { ...p, angle: newAngle };
       });
 
       frameCountRef.current++;
@@ -135,7 +132,7 @@ function ParticleAnimation() {
     };
   }, [isMaster, ctx, layout]);
 
-  if (!ctx || !layout) return <div>Lade...</div>;
+  if (!ctx || !layout) return <div>Loading...</div>;
 
   return (
     <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
