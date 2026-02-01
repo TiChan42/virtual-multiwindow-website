@@ -34,9 +34,24 @@ export function useViewportOffset(layout: VflLayout | null, winRect: { x: number
         screens: layout.screens,
       });
       setAssignedScreenId(screenId);
-    }
 
-    setViewportOffset(computeViewportOffset(layout, winRect));
+      // Fix: Compute offset relative to the assigned screen, not the frame
+      const assignedScreen = layout.screens.find(s => s.id === screenId);
+      if (assignedScreen) {
+        // Offset relative to screen: winRect - screenPosition
+        const offsetX = winRect.x - assignedScreen.x;
+        const offsetY = winRect.y - assignedScreen.y;
+        setViewportOffset({ x: offsetX, y: offsetY });
+        console.log(`[useViewportOffset] Assigned screen ${screenId}, offset: (${offsetX}, ${offsetY})`);
+      } else {
+        // Fallback: Use frame offset, but log warning
+        console.warn(`[useViewportOffset] No assigned screen found for ${screenId}, falling back to frame offset`);
+        setViewportOffset(computeViewportOffset(layout, winRect));
+      }
+    } else {
+      // Without URL layout: Use frame offset
+      setViewportOffset(computeViewportOffset(layout, winRect));
+    }
   }, [layout, winRect, windowId]);
 
   return { viewportOffset, assignedScreenId };

@@ -139,7 +139,7 @@ export function assignScreenForWindow(args: {
     }
 
     const score = overlap > 0
-      ? 0.8 * overlapRatio + 0.2 * sizeScore
+      ? overlapRatio
       : 0.05 * sizeScore;
 
     const tie = stableRand01(`${windowId}:${s.id}`);
