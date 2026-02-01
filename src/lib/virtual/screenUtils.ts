@@ -53,3 +53,36 @@ export function computeLayoutFromScreens(): VflLayout {
   };
   return normalizeLayout({ v: 1, frame, screens });
 }
+
+export function getScreenIdFromUrl(): string | null {
+  const url = new URL(window.location.href);
+  const param = url.searchParams.get("screenId");
+  if (!param) return null;
+  try {
+    return decodeURIComponent(param);
+  } catch {
+    return null;
+  }
+}
+
+export function getScreenPositionFromUrl(): { x: number; y: number } | null {
+  const url = new URL(window.location.href);
+  const param = url.searchParams.get("screenPosition");
+  if (!param || !param.startsWith("pos1.")) return null;
+  try {
+    const json = decodeURIComponent(param.slice(5));
+    const pos = JSON.parse(json);
+    if (typeof pos.x === "number" && typeof pos.y === "number") {
+      return pos;
+    }
+  } catch {}
+  return null;
+}
+
+export function encodeScreenIdToUrlParam(screenId: string): string {
+  return encodeURIComponent(screenId);
+}
+
+export function encodeScreenPositionToUrlParam(pos: { x: number; y: number }): string {
+  return `pos1.${encodeURIComponent(JSON.stringify(pos))}`;
+}

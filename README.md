@@ -95,6 +95,40 @@ http://localhost:3000?layout=vfl1.<encoded-layout>
 
 The layout is automatically computed from the Screen Details API or manually.
 
+### Specify Screen and Position via URL
+
+You can explicitly specify the screen assignment and/or window position via URL parameters. These parameters override the automatic calculations when provided.
+
+- **`screenId`**: Forces assignment to a specific screen (skips automatic screen assignment).
+- **`screenPosition`**: Sets the window's position relative to its assigned screen (skips offset calculation).
+
+#### Examples
+
+1. **Specify screen only**:
+   ```
+   http://localhost:3000?layout=vfl1.<encoded-layout>&screenId=S1
+   ```
+   Assigns the window to screen `S1` and computes the offset based on the window's actual position.
+
+2. **Specify position only**:
+   ```
+   http://localhost:3000?layout=vfl1.<encoded-layout>&screenPosition=pos1.%7B%22x%22%3A100%2C%22y%22%3A200%7D
+   ```
+   Uses automatic screen assignment but sets the viewport offset to (100, 200) relative to the assigned screen.
+
+3. **Specify both**:
+   ```
+   http://localhost:3000?layout=vfl1.<encoded-layout>&screenId=S2&screenPosition=pos1.%7B%22x%22%3A50%2C%22y%22%3A150%7D
+   ```
+   Assigns to screen `S2` and sets the position to (50, 150).
+
+#### Encoding
+
+- `screenId`: Use `encodeURIComponent()` for special characters.
+- `screenPosition`: Use the format `pos1.<encoded-json>`, where the JSON is `{"x": number, "y": number}` and encoded with `encodeURIComponent()`.
+
+Use the helper functions `encodeScreenIdToUrlParam()` and `encodeScreenPositionToUrlParam()` from `src/lib/virtual/screenUtils.ts` to generate these parameters.
+
 ### Development and Customization
 
 - **Edit the page**: Modify `src/app/page.tsx` to customize the content of the virtual world.
