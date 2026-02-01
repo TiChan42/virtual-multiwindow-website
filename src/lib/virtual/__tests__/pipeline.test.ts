@@ -1,11 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { 
   getScreenIdFromUrl, 
   getScreenPositionFromUrl, 
-  getLayoutFromUrl,
-} from '@/lib/virtual/screenUtils';
-import { resolveScreenAssignment, resolveRelativePosition, resolveGlobalVirtualRect } from '@/lib/virtual/windowStateUtils';
-import type { VflLayout, Rect } from '@/lib/virtual/types';
+} from '@/lib/virtual/utils/screenUtils';
+import { resolveScreenAssignment, resolveRelativePosition, resolveGlobalVirtualRect } from '@/lib/virtual/utils/windowStateUtils';
+import type { VflLayout, Rect } from '@/lib/virtual/types/types';
 
 // Integration Logic Simulator
 // Since we can't easily spin up multiple Next.js pages in unit tests,

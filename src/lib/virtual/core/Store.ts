@@ -1,4 +1,4 @@
-import { WindowSnapshot, VflLayout } from "../types";
+
 
 type Listener<T> = (state: T) => void;
 
@@ -16,7 +16,7 @@ export class Store<T> {
 
   set(newState: Partial<T> | ((prev: T) => Partial<T>)) {
     const changes = typeof newState === 'function' 
-      ? (newState as Function)(this.state) 
+      ? (newState as (prev: T) => Partial<T>)(this.state) 
       : newState;
 
     this.state = { ...this.state, ...changes };
@@ -41,6 +41,12 @@ export class Store<T> {
   }
 
   private emit() {
-    this.listeners.forEach(l => l(this.state));
+    this.listeners.forEach(l => {
+      try {
+        l(this.state);
+      } catch (error) {
+        console.error('[Store] Listener error:', error);
+      }
+    });
   }
 }

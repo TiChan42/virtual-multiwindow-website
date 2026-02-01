@@ -6,16 +6,15 @@ import {
   WindowSnapshot, 
   VflLayout,
   Rect 
-} from "../types";
-import { normalizeLayout } from "../vfl";
+} from "../types/types";
+import { normalizeLayout } from "../utils/vfl";
 import { generateSessionId } from "./sessionUtils";
 import { 
     getStaticLayoutFromUrl, 
     calculateAssignedScreen, 
     calculateRelativePosition, 
     calculateGlobalPosition 
-} from "./positioning";
-import * as vfl from "../vfl"; 
+} from "./positioning"; 
 
 const HEARTBEAT_INTERVAL = 1000;
 const LEADER_TIMEOUT = 3000;
@@ -25,8 +24,8 @@ const WINDOW_TIMEOUT = 5000;
 export class VirtualEngine {
   public store: Store<VirtualState>;
   private network!: NetworkAdapter; // Initialized async or messy in constructor? We'll maintain order.
-  private heartbeatTimer: any;
-  private cleanupTimer: any;
+  private heartbeatTimer: number | null = null;
+  private cleanupTimer: number | null = null;
   private lastLeaderHeartbeat: number = 0;
   private leaderId: string | null = null;
   
@@ -70,8 +69,8 @@ export class VirtualEngine {
       this.network.onMessage(this.handleMessage.bind(this));
 
       // Start Loops after network is ready
-      this.heartbeatTimer = setInterval(this.tick.bind(this), HEARTBEAT_INTERVAL);
-      this.cleanupTimer = setInterval(this.cleanupFn.bind(this), CLEANUP_INTERVAL);
+      this.heartbeatTimer = setInterval(this.tick.bind(this), HEARTBEAT_INTERVAL) as unknown as number;
+      this.cleanupTimer = setInterval(this.cleanupFn.bind(this), CLEANUP_INTERVAL) as unknown as number;
       
       // Initial calculations using the static layout if present
       if (this.staticLayout) {
@@ -95,7 +94,7 @@ export class VirtualEngine {
     }
   }
 
-  public setSharedData(key: string, value: any) {
+  public setSharedData(key: string, value: unknown) {
     // Optimistic update
     this.store.update(s => {
       s.sharedData[key] = value;
@@ -108,8 +107,8 @@ export class VirtualEngine {
   }
 
   public dispose() {
-    clearInterval(this.heartbeatTimer);
-    clearInterval(this.cleanupTimer);
+    if (this.heartbeatTimer !== null) clearInterval(this.heartbeatTimer);
+    if (this.cleanupTimer !== null) clearInterval(this.cleanupTimer);
     if(this.network) {
         this.network.close();
         this.network.broadcast({ 

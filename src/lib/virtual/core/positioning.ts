@@ -1,6 +1,6 @@
-import { VflLayout, VflScreen, Rect } from "../types";
-import { decodeVflFromUrlParam, assignScreenForWindow } from "../vfl";
-import { getScreenIdFromUrl, getScreenPositionFromUrl } from "../screenUtils"; // We need to make sure these exist or reimplement cleanly
+import { VflLayout, VflScreen, Rect } from "../types/types";
+import { decodeVflFromUrlParam, assignScreenForWindow } from "../utils/vfl";
+import { getScreenIdFromUrl, getScreenPositionFromUrl } from "../utils/screenUtils"; // We need to make sure these exist or reimplement cleanly
 
 /**
  * 1. Extract static layout from URL

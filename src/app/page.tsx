@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useContext, useEffect, useRef, useState } from "react";
-import { VirtualCtx } from "@/lib/virtual/export/virtualContext";
+import React, { useContext, useEffect, useState } from "react";
+import { VirtualCtx } from "@/lib/virtual/extensions/virtualContext";
 import type { VirtualEngine } from "@/lib/virtual/core/VirtualEngine";
 
 type Particle = {
@@ -20,15 +20,12 @@ const ANIMATION_SPEED = 0.2;
 
 function ParticleAnimation() {
   const ctx = useContext(VirtualCtx);
-  
-  // If context isn't ready, do nothing
-  if (!ctx || !ctx.layout) return null;
-
-  const { layout, isLeader, sharedData, engine } = ctx;
+  const { layout, isLeader, sharedData, engine } = ctx || {};
   const virtualEngine = engine as VirtualEngine;
 
   // 1. Background Color Management
   useEffect(() => {
+    if (!ctx || !ctx.layout) return;
     let color = sharedData?.bgColor;
     // Leader initializes color
     if (!color && isLeader && virtualEngine) {
@@ -37,21 +34,21 @@ function ParticleAnimation() {
     }
     // All apply color
     if (color && typeof window !== 'undefined') {
-        document.body.style.backgroundColor = color;
+        document.body.style.backgroundColor = color as string;
     }
-  }, [sharedData?.bgColor, isLeader, virtualEngine]);
+  }, [ctx, sharedData?.bgColor, isLeader, virtualEngine]);
 
   // 2. Particle Initialization (Leader Only)
   useEffect(() => {
-    if (isLeader && virtualEngine && (!sharedData?.particles || sharedData.particles.length === 0)) {
+    if (!ctx || !ctx.layout) return;
+    if (isLeader && virtualEngine && (!sharedData?.particles || (sharedData?.particles as Particle[]).length === 0)) {
         const initParticles: Particle[] = [];
-        const frameW = layout.frame?.w || 1920; 
+        const frameW = layout?.frame?.w || 1920; 
         
         console.log("[ParticleAnimation] Initializing Particles as Leader");
-
         for (let i = 0; i < PARTICLE_COUNT; i++) {
-          const centerX = Math.random() * (layout.frame?.w || 1000); 
-          const centerY = Math.random() * (layout.frame?.h || 1000);
+          const centerX = Math.random() * (layout?.frame?.w || 1000); 
+          const centerY = Math.random() * (layout?.frame?.h || 1000);
           const orbitRadius = Math.random() * 300 + 50;
           const size = i < 5 ? 0.7 * frameW : Math.random() * 150 + 50;
           
@@ -68,11 +65,8 @@ function ParticleAnimation() {
         }
         virtualEngine.setSharedData("particles", initParticles);
     }
-  }, [isLeader, sharedData?.particles, layout, virtualEngine]);
+  }, [ctx, isLeader, sharedData?.particles, layout, virtualEngine]);
 
-  // 3. Rendering
-  const particles = (sharedData?.particles as Particle[]) || [];
-  
   // Custom hook for time-based animation
   const useTime = () => {
       const [time, setTime] = useState(Date.now());
@@ -90,6 +84,12 @@ function ParticleAnimation() {
   
   const time = useTime(); 
 
+  // If context isn't ready, do nothing
+  if (!ctx || !ctx.layout) return null;
+
+  // 3. Rendering
+  const particles = (sharedData?.particles as Particle[]) || [];
+  
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       {particles.map((p) => {
@@ -120,20 +120,11 @@ function ParticleAnimation() {
   );
 }
 
-// Ensure Client Rendering
-function ClientOnly({ children }: { children: React.ReactNode }) {
-    const [mounted, setMounted] = useState(false);
-    useEffect(() => setMounted(true), []);
-    if (!mounted) return null;
-    return <>{children}</>;
-}
 
 export default function Page() {
   return (
     <main className="relative w-full h-full min-h-screen overflow-hidden">
-        <ClientOnly>
-             <ParticleAnimation />
-        </ClientOnly>
+        <ParticleAnimation />
         
         {/* Content Overlay */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">

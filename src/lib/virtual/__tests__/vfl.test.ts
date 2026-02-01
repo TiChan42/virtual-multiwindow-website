@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeLayout, assignScreenForWindow } from '@/lib/virtual/vfl';
-import type { VflLayout, Rect, VflScreen } from '@/lib/virtual/types';
+import { normalizeLayout, assignScreenForWindow } from '@/lib/virtual/utils/vfl';
+import type { Rect, VflScreen } from '@/lib/virtual/types/types';
 
 describe('VFL Core Logic (vfl.ts)', () => {
 

@@ -1,10 +1,10 @@
 "use client";
 
-import type { VflLayout } from "@/lib/virtual/types";
+import type { VflLayout, WindowSnapshot } from "@/lib/virtual/types/types";
 
 interface MinimapProps {
   layout: VflLayout;
-  windows: Record<string, any>;
+  windows: Record<string, WindowSnapshot>;
   windowId: string;
   assignedScreenId?: string;
 }
@@ -56,7 +56,7 @@ export function Minimap({ layout, windows, windowId, assignedScreenId }: Minimap
           );
         })}
         {/* Windows */}
-        {Object.values(windows).map((win: any) => {
+        {Object.values(windows).map((win: WindowSnapshot) => {
           // Use virtualRect if available, otherwise fallback to physical rect which might be wrong in virtual space
           const rect = win.virtualRect || win.rect;
           

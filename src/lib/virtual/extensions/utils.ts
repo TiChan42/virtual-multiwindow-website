@@ -6,15 +6,14 @@
  * Executes a function only once, regardless of how many times it's called.
  * Subsequent calls return undefined.
  */
-export function once<T extends (...args: any[]) => any>(fn: T): T {
+export function once<T extends (...args: unknown[]) => unknown>(fn: T): T {
   let called = false;
-  let result: any;
+  let result: unknown;
 
-  return ((...args: any[]) => {
+  return ((...args: Parameters<T>) => {
     if (!called) {
       called = true;
       result = fn(...args);
-      return result;
     }
     return result;
   }) as T;
@@ -24,9 +23,9 @@ export function once<T extends (...args: any[]) => any>(fn: T): T {
  * Executes a function only if this is the first browser instance.
  * Uses sessionStorage to determine if it's the first instance.
  */
-export function oncePerSession<T extends (...args: any[]) => any>(fn: T): T {
+export function oncePerSession<T extends (...args: never[]) => unknown>(fn: T): T {
   const key = 'vwin:firstBrowserExecuted';
-  return ((...args: any[]) => {
+  return ((...args: Parameters<T>) => {
     if (typeof window !== 'undefined' && !sessionStorage.getItem(key)) {
       sessionStorage.setItem(key, 'true');
       return fn(...args);
@@ -37,7 +36,7 @@ export function oncePerSession<T extends (...args: any[]) => any>(fn: T): T {
 /**
  * Debounces a function call.
  */
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: never[]) => unknown>(
   fn: T,
   delay: number
 ): (...args: Parameters<T>) => void {
@@ -51,7 +50,7 @@ export function debounce<T extends (...args: any[]) => any>(
   };
 }
 
-import type { Rect } from "../types";
+import type { Rect, WindowSnapshot } from "../types/types";
 
 export function getCurrentWindowRect(): Rect {
   if (typeof window === "undefined") {
@@ -68,7 +67,7 @@ export function getCurrentWindowRect(): Rect {
 /**
  * Throttles a function call.
  */
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => unknown>(
   fn: T,
   interval: number
 ): (...args: Parameters<T>) => void {
@@ -89,7 +88,7 @@ export function throttle<T extends (...args: any[]) => any>(
  * @param fallbackWindowId - Fallback window ID if no windows are registered.
  * @returns The master window ID as a string.
  */
-export function getMasterWindowId(windows: Record<string, any>, fallbackWindowId: string = ''): string {
+export function getMasterWindowId(windows: Record<string, WindowSnapshot>, fallbackWindowId: string = ''): string {
   const allWindowIds = Object.keys(windows);
   if (allWindowIds.length === 0) return fallbackWindowId;
   // Sort alphabetically and take the first (lowest)
@@ -103,7 +102,7 @@ export function getMasterWindowId(windows: Record<string, any>, fallbackWindowId
  * @param windows - The windows registry object.
  * @returns True if the current window is the master, false otherwise.
  */
-export function isMasterWindow(windowId: string, windows: Record<string, any>): boolean {
+export function isMasterWindow(windowId: string, windows: Record<string, WindowSnapshot>): boolean {
   const masterId = getMasterWindowId(windows, windowId);
   return windowId === masterId;
 }

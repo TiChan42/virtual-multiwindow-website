@@ -1,7 +1,6 @@
-"use client";
-
-import { useEffect, useState, useRef, useContext } from 'react';
-import { VirtualCtx } from '@/lib/virtual/export/virtualContext';
+import { useEffect, useState, useContext } from 'react';
+import { VirtualCtx } from './virtualContext';
+import type { VirtualEngine } from '../core/VirtualEngine';
 
 type InputEvent =
   | { type: 'keydown'; key: string; windowId: string; timestamp: number; }
@@ -14,22 +13,15 @@ type InputEvent =
   | { type: 'mouseleave'; x: number; y: number; windowId: string; timestamp: number; }
   | { type: 'scroll'; scrollX: number; scrollY: number; windowId: string; timestamp: number; };
 
-const INPUT_CHANNEL = 'virtual-inputs';
-
-export function useVirtualInputs() {
+export function useVirtualInputs(engine: VirtualEngine | null) {
   const ctx = useContext(VirtualCtx);
   const [inputs, setInputs] = useState<InputEvent[]>([]);
-  const bcRef = useRef<BroadcastChannel | null>(null);
 
   useEffect(() => {
-    bcRef.current = new BroadcastChannel(INPUT_CHANNEL);
-    bcRef.current.onmessage = (ev) => {
-      const input: InputEvent = ev.data;
-      setInputs(prev => [...prev, input]);
-    };
+    if (!ctx || !engine) return;
 
-    const windowId = ctx?.windowId || 'unknown';
-    const viewportOffset = ctx?.viewportOffset || { x: 0, y: 0 };
+    const windowId = ctx.windowId || 'unknown';
+    const viewportOffset = ctx.viewportOffset || { x: 0, y: 0 };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       const input: InputEvent = {
@@ -38,7 +30,7 @@ export function useVirtualInputs() {
         windowId,
         timestamp: Date.now(),
       };
-      bcRef.current?.postMessage(input);
+      engine.setSharedData('input_event', input);
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
@@ -48,7 +40,7 @@ export function useVirtualInputs() {
         windowId,
         timestamp: Date.now(),
       };
-      bcRef.current?.postMessage(input);
+      engine.setSharedData('input_event', input);
     };
 
     const handleMouseDown = (e: MouseEvent) => {
@@ -60,7 +52,7 @@ export function useVirtualInputs() {
         windowId,
         timestamp: Date.now(),
       };
-      bcRef.current?.postMessage(input);
+      engine.setSharedData('input_event', input);
     };
 
     const handleMouseUp = (e: MouseEvent) => {
@@ -72,7 +64,7 @@ export function useVirtualInputs() {
         windowId,
         timestamp: Date.now(),
       };
-      bcRef.current?.postMessage(input);
+      engine.setSharedData('input_event', input);
     };
 
     const handleMouseMove = (e: MouseEvent) => {
@@ -83,7 +75,7 @@ export function useVirtualInputs() {
         windowId,
         timestamp: Date.now(),
       };
-      bcRef.current?.postMessage(input);
+      engine.setSharedData('input_event', input);
     };
 
     const handleWheel = (e: WheelEvent) => {
@@ -97,7 +89,7 @@ export function useVirtualInputs() {
         windowId,
         timestamp: Date.now(),
       };
-      bcRef.current?.postMessage(input);
+      engine.setSharedData('input_event', input);
     };
 
     const handleMouseEnter = (e: MouseEvent) => {
@@ -108,7 +100,7 @@ export function useVirtualInputs() {
         windowId,
         timestamp: Date.now(),
       };
-      bcRef.current?.postMessage(input);
+      engine.setSharedData('input_event', input);
     };
 
     const handleMouseLeave = (e: MouseEvent) => {
@@ -119,7 +111,7 @@ export function useVirtualInputs() {
         windowId,
         timestamp: Date.now(),
       };
-      bcRef.current?.postMessage(input);
+      engine.setSharedData('input_event', input);
     };
 
     const handleScroll = (e: Event) => {
@@ -131,7 +123,7 @@ export function useVirtualInputs() {
         windowId,
         timestamp: Date.now(),
       };
-      bcRef.current?.postMessage(input);
+      engine.setSharedData('input_event', input);
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -154,9 +146,20 @@ export function useVirtualInputs() {
       window.removeEventListener('mouseenter', handleMouseEnter);
       window.removeEventListener('mouseleave', handleMouseLeave);
       window.removeEventListener('scroll', handleScroll, true);
-      bcRef.current?.close();
     };
-  }, [ctx?.windowId, ctx?.viewportOffset]);
+  }, [ctx?.windowId, ctx?.viewportOffset, engine, ctx]);
+
+  // Listen for shared input events
+  useEffect(() => {
+    if (!engine) return () => {};
+    const unsubscribe = engine.store.subscribe(() => {
+      const sharedInput = engine.store.get().sharedData?.input_event;
+      if (sharedInput) {
+        setInputs(prev => [...prev, sharedInput as InputEvent]);
+      }
+    });
+    return unsubscribe;
+  }, [engine]);
 
   return inputs;
 }

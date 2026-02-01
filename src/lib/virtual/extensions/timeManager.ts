@@ -1,26 +1,23 @@
-import { getThisWindowID } from "../windowId";
+import type { VirtualEngine } from "../core/VirtualEngine";
 
 type TimeEvent =
   | { t: "timer_start"; id: string; duration: number; timestamp: number }
   | { t: "timer_end"; id: string; timestamp: number }
   | { t: "timestamp_update"; key: string; value: number };
 
-const TIME_CHANNEL = "vwin:time";
-
 export class TimeManager {
-  private bc: BroadcastChannel | null = null;
+  private engine: VirtualEngine;
   private timers: Map<string, { start: number; duration: number; timeoutId?: number }> = new Map();
   private timestamps: Map<string, number> = new Map();
   private onTimeEvent: ((event: TimeEvent) => void) | null = null;
 
-  constructor(onTimeEvent?: (event: TimeEvent) => void) {
+  constructor(engine: VirtualEngine, onTimeEvent?: (event: TimeEvent) => void) {
+    this.engine = engine;
     this.onTimeEvent = onTimeEvent || null;
-    this.bc = new BroadcastChannel(TIME_CHANNEL);
-    this.bc.onmessage = (ev) => this.handle(ev.data as TimeEvent);
   }
 
   /**
-   * @brief Starts a shared timer.
+   * @brief Starts a shared timer via VirtualEngine sharedData.
    * @param id The unique identifier for the timer.
    * @param duration The duration in milliseconds.
    */
@@ -30,9 +27,10 @@ export class TimeManager {
     const timeoutId = setTimeout(() => {
       this.endTimer(id);
     }, duration);
-    this.timers.get(id)!.timeoutId = timeoutId as any;
-    this.bc?.postMessage({ t: "timer_start", id, duration, timestamp: start });
-    this.onTimeEvent?.({ t: "timer_start", id, duration, timestamp: start });
+    this.timers.get(id)!.timeoutId = timeoutId as unknown as number;
+    const event: TimeEvent = { t: "timer_start", id, duration, timestamp: start };
+    this.engine.setSharedData(`timer_${id}`, event);
+    this.onTimeEvent?.(event);
   }
 
   /**
@@ -45,21 +43,23 @@ export class TimeManager {
       if (timer.timeoutId) clearTimeout(timer.timeoutId);
       this.timers.delete(id);
       const timestamp = Date.now();
-      this.bc?.postMessage({ t: "timer_end", id, timestamp });
-      this.onTimeEvent?.({ t: "timer_end", id, timestamp });
+      const event: TimeEvent = { t: "timer_end", id, timestamp };
+      this.engine.setSharedData(`timer_${id}`, event);
+      this.onTimeEvent?.(event);
     }
   }
 
   /**
-   * @brief Sets a timestamp.
+   * @brief Sets a timestamp via sharedData.
    * @param key The key for the timestamp.
    * @param value The timestamp value (defaults to current time if not provided).
    */
   setTimestamp(key: string, value?: number) {
     const timestamp = value || Date.now();
     this.timestamps.set(key, timestamp);
-    this.bc?.postMessage({ t: "timestamp_update", key, value: timestamp });
-    this.onTimeEvent?.({ t: "timestamp_update", key, value: timestamp });
+    const event: TimeEvent = { t: "timestamp_update", key, value: timestamp };
+    this.engine.setSharedData(`timestamp_${key}`, event);
+    this.onTimeEvent?.(event);
   }
 
   /**
@@ -79,19 +79,7 @@ export class TimeManager {
     return Object.fromEntries(this.timestamps);
   }
 
-  private handle(event: TimeEvent) {
-    if (event.t === "timer_start") {
-      this.timers.set(event.id, { start: event.timestamp, duration: event.duration });
-    } else if (event.t === "timer_end") {
-      this.timers.delete(event.id);
-    } else if (event.t === "timestamp_update") {
-      this.timestamps.set(event.key, event.value);
-    }
-    this.onTimeEvent?.(event);
-  }
-
   destroy() {
-    this.bc?.close();
     this.timers.forEach(timer => {
       if (timer.timeoutId) clearTimeout(timer.timeoutId);
     });

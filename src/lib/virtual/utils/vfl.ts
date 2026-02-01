@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Rect, VflLayout, VflScreen } from "./types";
+import type { Rect, VflLayout, VflScreen } from "../types/types";
 
 const RectZ = z.object({
   x: z.number(),
@@ -39,15 +39,7 @@ export function normalizeLayout(layout: Omit<VflLayout, "frame"> & { frame?: Rec
 }
 
 // base64url helpers
-function b64urlEncode(str: string): string {
-  const b64 = btoa(unescape(encodeURIComponent(str)));
-  return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-}
-function b64urlDecode(b64url: string): string {
-  const pad = b64url.length % 4 === 0 ? "" : "=".repeat(4 - (b64url.length % 4));
-  const b64 = (b64url + pad).replace(/-/g, "+").replace(/_/g, "/");
-  return decodeURIComponent(escape(atob(b64)));
-}
+// removed unused functions
 
 /**
  * URL-Format: layout=vfl1.<urlencoded(json)>

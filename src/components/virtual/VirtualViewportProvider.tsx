@@ -1,25 +1,22 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo } from "react";
 
 import { Minimap } from "./Minimap";
-import { PermissionDialog } from "./PermissionDialog";
 
-import type { VirtualContext } from "@/lib/virtual/types";
-import { VirtualCtx } from "@/lib/virtual/export/virtualContext";
+import type { VirtualContext } from "@/lib/virtual/types/types";
+import { VirtualCtx } from "@/lib/virtual/extensions/virtualContext";
 import { VirtualEngine } from "@/lib/virtual/core/VirtualEngine";
 import { useVirtualState } from "@/lib/virtual/hooks/useVirtualStore";
-import { getThisWindowID } from "@/lib/virtual/windowId";
-import { getCurrentWindowRect } from "@/lib/virtual/export/utils";
+import { getThisWindowID } from "@/lib/virtual/utils/windowId";
+import { getCurrentWindowRect } from "@/lib/virtual/extensions/utils";
 
 export function VirtualViewportProvider({ children }: { children: React.ReactNode }) {
   // 1. Initialize Engine (Singleton per component lifecycle)
-  const engineRef = useRef<VirtualEngine | null>(null);
-  
-  if (!engineRef.current && typeof window !== "undefined") {
-    engineRef.current = new VirtualEngine(getThisWindowID(), getCurrentWindowRect());
-  }
-  const engine = engineRef.current;
+  const engine = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    return new VirtualEngine(getThisWindowID(), getCurrentWindowRect());
+  }, []);
 
   // 2. Sync External Store (Replaces useState/useEffect for state)
   // This ensures high-performance rendering without tearing

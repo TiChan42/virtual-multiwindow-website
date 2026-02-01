@@ -1,14 +1,27 @@
-import type { VflLayout } from "@/lib/virtual/types";
-import { normalizeLayout, decodeVflFromUrlParam } from "@/lib/virtual/vfl";
+import type { VflLayout } from "../types/types";
+import { normalizeLayout, decodeVflFromUrlParam } from "./vfl";
+
+type ScreenDetails = {
+  id?: string;
+  left?: number;
+  top?: number;
+  width?: number;
+  height?: number;
+  availLeft?: number;
+  availTop?: number;
+  availWidth?: number;
+  availHeight?: number;
+  devicePixelRatio?: number;
+};
 
 export async function getVflFromScreenDetails(): Promise<VflLayout | null> {
   // Permission / support dependent
-  const anyWin = window as any;
-  if (typeof anyWin.getScreenDetails !== "function") return null;
+  const anyWin = window as { getScreenDetails?: () => Promise<{ screens?: ScreenDetails[] }> };
+  if (!anyWin.getScreenDetails) return null;
 
   try {
     const details = await anyWin.getScreenDetails(); // may prompt permission
-    const screens = (details.screens ?? []).map((s: any, i: number) => ({
+    const screens = (details.screens ?? []).map((s: ScreenDetails, i: number) => ({
       id: s.id?.toString?.() ?? `S${i + 1}`,
       x: Number(s.left ?? s.availLeft ?? 0),
       y: Number(s.top ?? s.availTop ?? 0),
@@ -41,7 +54,7 @@ export function computeLayoutFromScreens(): VflLayout {
     return { v: 1, frame: { x: 0, y: 0, w: 1920, h: 1080 }, screens: [{ id: "S1", x: 0, y: 0, w: 1920, h: 1080 }] };
   }
   // Compute layout from screen properties (without permission)
-  const scr = window.screen as any;
+  const scr = window.screen as Screen & { availLeft: number; availTop: number; availWidth: number; availHeight: number; };
   const availLeft = scr.availLeft ?? 0;
   const availTop = scr.availTop ?? 0;
   const availWidth = scr.availWidth;

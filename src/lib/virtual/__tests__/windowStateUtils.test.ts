@@ -3,8 +3,8 @@ import {
   resolveScreenAssignment, 
   resolveRelativePosition, 
   resolveGlobalVirtualRect 
-} from '@/lib/virtual/windowStateUtils';
-import type { VflLayout, VflScreen } from '@/lib/virtual/types';
+} from '@/lib/virtual/utils/windowStateUtils';
+import type { VflLayout } from '@/lib/virtual/types/types';
 
 // Mock Data
 const mockLayout: VflLayout = {

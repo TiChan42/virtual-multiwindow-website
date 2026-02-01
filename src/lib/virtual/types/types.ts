@@ -31,7 +31,7 @@ export type VirtualState = {
   virtualRect?: Rect;
   isLeader: boolean;
   permissionGranted: boolean;
-  sharedData: Record<string, any>; // Arbitrary shared data (replaces SharedState)
+  sharedData: Record<string, unknown>; // Arbitrary shared data (replaces SharedState)
 };
 
 export type VirtualEvent = 
@@ -40,12 +40,12 @@ export type VirtualEvent =
   | { type: 'GOODBYE'; payload: { id: string } }
   | { type: 'LAYOUT_UPDATE'; payload: VflLayout }
   | { type: 'LEADER_CLAIM'; payload: { id: string, timestamp: number } }
-  | { type: 'SHARED_DATA_UPDATE'; payload: { key: string, value: any } }; // New event
+  | { type: 'SHARED_DATA_UPDATE'; payload: { key: string, value: unknown } }; // New event
 
 export type VirtualContext = VirtualState & {
   // Method Dispatches
   requestPermission: () => Promise<void>;
   computeWithoutPermission: () => void;
   // Access to core engine
-  engine: any; // Type as VirtualEngine in implementation but avoid circular dep here if possible or just use 'any' / 'object'
+  engine: object | null; // Type as VirtualEngine in implementation but avoid circular dep here if possible or just use 'any' / 'object'
 };

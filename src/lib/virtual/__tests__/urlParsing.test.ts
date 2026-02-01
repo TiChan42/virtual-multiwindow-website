@@ -3,11 +3,10 @@ import {
   getScreenPositionFromUrl, 
   getScreenIdFromUrl, 
   getLayoutFromUrl,
-  encodeScreenIdToUrlParam,
   // We might need to export encodeScreenPositionToUrlParam if it exists or test the decoder robustly
-} from '@/lib/virtual/screenUtils';
-import { encodeVflToUrlParam } from '@/lib/virtual/vfl';
-import type { VflLayout } from '@/lib/virtual/types';
+} from '@/lib/virtual/utils/screenUtils';
+import { encodeVflToUrlParam } from '@/lib/virtual/utils/vfl';
+import type { VflLayout } from '@/lib/virtual/types/types';
 
 describe('URL Parser & Serializer (screenUtils)', () => {
   const originalLocation = window.location;

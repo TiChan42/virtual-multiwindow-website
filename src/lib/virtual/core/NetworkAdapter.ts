@@ -1,4 +1,4 @@
-import { VirtualEvent } from "../types";
+import { VirtualEvent } from "../types/types";
 
 type MessageHandler = (event: VirtualEvent) => void;
 
@@ -32,7 +32,13 @@ export class NetworkAdapter {
     const data = ev.data as VirtualEvent;
     if (!data || !data.type) return;
 
-    this.listeners.forEach(l => l(data));
+    this.listeners.forEach(l => {
+      try {
+        l(data);
+      } catch (err) {
+        console.error('[NetworkAdapter] Listener error:', err);
+      }
+    });
   }
 
   public close() {

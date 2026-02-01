@@ -1,4 +1,4 @@
-import { VflLayout, VflScreen, Rect } from "./types";
+import { VflLayout, VflScreen, Rect } from "../types/types";
 import { assignScreenForWindow } from "./vfl";
 
 /**

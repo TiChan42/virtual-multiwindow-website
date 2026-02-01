@@ -1,16 +1,14 @@
-import { getThisWindowID } from "../windowId";
+import { getThisWindowID } from "../utils/windowId";
+import type { VirtualEngine } from "../core/VirtualEngine";
 
-type CustomEventData = { type: string; data?: any; timestamp: number; senderId: string };
-
-const EVENT_CHANNEL = "vwin:events";
+type CustomEventData = { type: string; data?: unknown; timestamp: number; senderId: string };
 
 export class EventManager {
-  private bc: BroadcastChannel | null = null;
+  private engine: VirtualEngine;
   private listeners: Map<string, ((event: CustomEventData) => void)[]> = new Map();
 
-  constructor() {
-    this.bc = new BroadcastChannel(EVENT_CHANNEL);
-    this.bc.onmessage = (ev) => this.handle(ev.data as CustomEventData);
+  constructor(engine: VirtualEngine) {
+    this.engine = engine;
   }
 
   /**
@@ -41,18 +39,19 @@ export class EventManager {
   }
 
   /**
-   * @brief Dispatches a custom event to all listeners and broadcasts it.
+   * @brief Dispatches a custom event to all listeners and broadcasts via VirtualEngine sharedData.
    * @param type The event type.
    * @param data Optional data associated with the event.
    */
-  dispatchEvent(type: string, data?: any) {
+  dispatchEvent(type: string, data?: unknown) {
     const event: CustomEventData = {
       type,
       data,
       timestamp: Date.now(),
       senderId: getThisWindowID()
     };
-    this.bc?.postMessage(event);
+    // Broadcast via VirtualEngine sharedData
+    this.engine.setSharedData(`event_${type}`, event);
     this.handle(event); // Auch lokal auslösen
   }
 
@@ -64,7 +63,6 @@ export class EventManager {
   }
 
   destroy() {
-    this.bc?.close();
     this.listeners.clear();
   }
 }
