@@ -129,8 +129,14 @@ export function assignScreenForWindow(args: {
     const overlap = inter ? area(inter) : 0;
     const overlapRatio = overlap / winArea;
 
-    const sizeDist = normalizedSizeDistance({ w: winRect.w, h: winRect.h }, { w: s.w, h: s.h });
-    const sizeScore = 1 - sizeDist;
+    let sizeScore: number;
+    // if screen has invalid size, give worst score
+    if (s.w <= 0 || s.h <= 0) {
+      sizeScore = 1;
+    } else {
+      const sizeDist = normalizedSizeDistance({ w: winRect.w, h: winRect.h }, { w: s.w, h: s.h });
+      sizeScore = 1 - sizeDist;
+    }
 
     const score = overlap > 0
       ? 0.8 * overlapRatio + 0.2 * sizeScore

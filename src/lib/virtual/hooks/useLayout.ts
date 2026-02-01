@@ -8,6 +8,7 @@ export function useLayout() {
   const [permissionPending, setPermissionPending] = useState<boolean>(false);
 
   const requestPermission = async () => {
+    console.log('requestPermission called');
     const vfl = await getVflFromScreenDetails();
     if (vfl) {
       const param = encodeVflToUrlParam(vfl);
@@ -16,10 +17,12 @@ export function useLayout() {
       window.location.href = newUrl; // Reloads the page
     } else {
       console.warn('[VirtualViewportProvider] permission denied or failed');
+      alert('Permission denied or not supported. Please use "Continue Without Permission" instead.');
     }
   };
 
   const computeWithoutPermission = () => {
+    console.log('computeWithoutPermission called');
     const computedLayout = computeLayoutFromScreens();
     const param = encodeVflToUrlParam(computedLayout);
     const newUrl = `${window.location.origin}${window.location.pathname}?layout=${param}`;
