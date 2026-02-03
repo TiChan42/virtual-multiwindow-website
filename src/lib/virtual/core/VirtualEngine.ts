@@ -17,18 +17,23 @@ import {
 } from "./positioning"; 
 
 const HEARTBEAT_INTERVAL = 1000;
-const LEADER_TIMEOUT = 3000;
+const LEADER_TIMEOUT = Math.max(HEARTBEAT_INTERVAL * 2, 3000);
 const CLEANUP_INTERVAL = 5000;
 const WINDOW_TIMEOUT = 5000;
 
 export class VirtualEngine {
   public store: Store<VirtualState>;
-  private network!: NetworkAdapter; // Initialized async or messy in constructor? We'll maintain order.
-  private heartbeatTimer: number | null = null;
+  private network!: NetworkAdapter; 
+  private heartbeatTimer: number | null = null; 
   private cleanupTimer: number | null = null;
-  private lastLeaderHeartbeat: number = 0;
+  private lastLeaderHeartbeat: number = Date.now();
   private leaderId: string | null = null;
+  private createdAt: number = Date.now();
   
+  // Initialization & Age Logic
+  private ageLocked = false;
+  private ticksSinceStart = 0;
+
   // Static Layout (if provided by URL)
   private staticLayout: VflLayout | null = null;
   private sessionId: string = "default";
@@ -121,43 +126,103 @@ export class VirtualEngine {
   private tick() {
     if (!this.network) return; // Wait for async init
 
+    // 1. Publish Self immediately so others know about us (and our Age)
     this.publishSelf();
-    
-    // Static Layout Mode: No Leader needed for layout, but maybe for sync?
-    // User requested "Centralized Calculations". 
-    // If Static Layout is present, every window simply calculates its own place 
-    // inside that Static Layout. The Leader is less important for layout, 
-    // but maybe for shared state (particles).
-    
+
     const state = this.store.get();
-    
-    // Standard Leader Election
     const now = Date.now();
-    if (!this.leaderId || (now - this.lastLeaderHeartbeat > LEADER_TIMEOUT)) {
-      if (!state.isLeader) {
-         this.becomeLeader();
-      }
+    const allWindows = Object.values(state.windows);
+    
+    // 2. Age Check Phase (only once at the beginning)
+    if (!this.ageLocked) {
+        // "falls bereits ein gleichalter oder jüngerer Browser existiert wird dessen alter + eine Zufällige Zahl verwendet"
+        // Meaning: If there is any window W where W.createdAt >= My.createdAt
+        // Then I am actually "younger" (arrived later), so I must increase my createdAt number to be > W.createdAt
+        
+        let maxCreatedAt = this.createdAt;
+        let conflictFound = false;
+
+        for (const w of allWindows) {
+            // Check for conflict or younger window
+            if (w.createdAt >= this.createdAt) {
+                if (w.createdAt > maxCreatedAt) {
+                     maxCreatedAt = w.createdAt;
+                }
+                conflictFound = true;
+            }
+        }
+
+        if (conflictFound) {
+            // Adjust my age to be strictly younger (larger number) than the "youngest" found
+            const buffer = Math.floor(Math.random() * 100) + 10;
+            this.createdAt = maxCreatedAt + buffer;
+            console.log(`[VirtualEngine] Age conflict/adjustment: New createdAt = ${this.createdAt}`);
+            
+            // Publish updated age immediately
+            this.publishSelf();
+        }
+
+        // If list was empty, we are "Temporary Leader" for heartbeats
+        if (allWindows.length === 0) {
+             // We are effectively alone, so we proceed directly
+             // But we still wait the mandatory ticks for stability
+             console.log(`[VirtualEngine] No other windows found. Assuming interim duties.`);
+        }
+        
+        this.ageLocked = true;
     }
 
-    if (state.isLeader) {
-      this.leaderId = state.windowId;
-      this.lastLeaderHeartbeat = now;
-      // Recalculate world mainly to aggregate windows, 
-      // but if staticLayout is used, we just broadcast that.
-      this.recalculateWorld();
+    // 3. Increment Tick Counter
+    this.ticksSinceStart++;
+
+    // 4. Wait Phase (2 Heartbeats)
+    // "Anschließend wird noch 2 Heartbeats gewartet"
+    if (this.ticksSinceStart < 3) {
+        // Just waiting, broadcasting presence
+        return;
+    }
+
+    // 5. Leader Decision
+    // "nun wird geprüft, ob er der älteste ist"
+    
+    // Candidates = Active Windows + Me
+    const me: WindowSnapshot = {
+        id: state.windowId,
+        createdAt: this.createdAt,
+        lastSeen: now,
+        rect: state.winRect,
+        timestamp: now
+    };
+    
+    const candidates = [...allWindows, me].filter(w => (now - w.lastSeen) < WINDOW_TIMEOUT);
+    
+    // Sort by Age ASC (Smallest number = Oldest = Leader)
+    candidates.sort((a, b) => a.createdAt - b.createdAt);
+
+    if (candidates.length === 0) return; // Should not happen as 'me' is there
+
+    const oldest = candidates[0];
+    const isNowLeader = (oldest.id === state.windowId);
+
+    if (isNowLeader) {
+        if (!state.isLeader) {
+            console.log(`[VirtualEngine] I am the Oldest (${this.createdAt}). Taking Leadership.`);
+            this.store.set({ isLeader: true });
+        }
+        this.leaderId = state.windowId;
+        this.recalculateWorld();
+    } else {
+        // If I was leader but am no longer oldest (e.g. huge clock skew or someone woke up)
+        if (state.isLeader) {
+            console.log(`[VirtualEngine] Stepping down. Leader is ${oldest.id} (${oldest.createdAt})`);
+            this.store.set({ isLeader: false });
+        }
+        this.leaderId = oldest.id;
     }
   }
 
-  private becomeLeader() {
-    console.log(`[VirtualEngine] ${this.store.get().windowId} becoming LEADER`);
-    this.store.set({ isLeader: true });
-    this.leaderId = this.store.get().windowId;
-    this.network?.broadcast({ 
-      type: 'LEADER_CLAIM', 
-      payload: { id: this.leaderId, timestamp: Date.now() } 
-    });
-    this.recalculateWorld();
-  }
+  // Removed old becomeLeader since logic is now in tick()
+  // private becomeLeader() ... 
 
   private handleMessage(event: VirtualEvent) {
     const state = this.store.get();
@@ -172,12 +237,8 @@ export class VirtualEngine {
         this.store.update(s => {
           s.windows[win.id] = { ...win, lastSeen: now };
         });
-
-        if (state.isLeader) {
-          // If I am leader, a new window means I need to recalc layout
-          // But maybe debounce this? For now direct call.
-          this.recalculateWorld();
-        }
+        
+        // Passive leader logic handles the rest in tick()
         break;
       }
       case 'GOODBYE': {
@@ -185,7 +246,7 @@ export class VirtualEngine {
         this.store.update(s => {
           delete s.windows[id];
         });
-        if (state.isLeader) this.recalculateWorld();
+        // If leader left, tick() will naturally pick the next oldest in next cycle
         break;
       }
       case 'LAYOUT_UPDATE': {
@@ -196,16 +257,10 @@ export class VirtualEngine {
         }
         break;
       }
+      // LEADER_CLAIM is no longer authoritative but can be ignored or treated as hint
       case 'LEADER_CLAIM': {
-        const { id } = event.payload;
-        // If someone else claims leadership with a "higher" priority (here: just acceptance)
-        // or if we just accept anyone who claims it.
-        if (id !== state.windowId) {
-          this.leaderId = id;
-          this.lastLeaderHeartbeat = now;
-          this.store.set({ isLeader: false });
-        }
-        break;
+         // with new logic we ignore claims, we trust data (age)
+         break;
       }
       case 'SHARED_DATA_UPDATE': {
         const { key, value } = event.payload;
@@ -223,6 +278,7 @@ export class VirtualEngine {
     const state = this.store.get();
     const snapshot: WindowSnapshot = {
       id: state.windowId,
+      createdAt: this.createdAt,
       rect: state.winRect,
       lastSeen: Date.now(),
       assignedScreenId: state.assignedScreenId,

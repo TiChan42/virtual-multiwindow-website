@@ -13,6 +13,7 @@ export type VflLayout = {
 
 export type WindowSnapshot = {
   id: string;
+  createdAt: number;
   lastSeen: number;
   rect: Rect;
   assignedScreenId?: string;
