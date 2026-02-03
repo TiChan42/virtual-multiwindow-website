@@ -30,7 +30,17 @@ export function calculateAssignedScreen(
   }
 
   // B. Geometry Check (Fallback)
-  const assignment = assignScreenForWindow({ windowId, winRect, screens });
+  let physicalScreenSize: { w: number, h: number } | undefined;
+  if (typeof window !== "undefined" && window.screen) {
+    physicalScreenSize = { w: window.screen.width, h: window.screen.height };
+  }
+
+  const assignment = assignScreenForWindow({ 
+    windowId, 
+    winRect, 
+    screens,
+    physicalScreenSize
+  });
   return screens.find(s => s.id === assignment.screenId) || screens[0];
 }
 

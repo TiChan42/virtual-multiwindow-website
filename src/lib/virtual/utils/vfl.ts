@@ -100,55 +100,65 @@ export function stableRand01(key: string): number {
 }
 
 /**
- * Assign window to one screen:
- * - primary: overlap ratio
- * - secondary: size similarity
- * - tie: stableRand(windowId + screenId)
+ * Calculates similarity between two dimensions.
+ * Returns a score between 0 (different) and 1 (identical).
+ */
+function calculateDimensionSimilarity(a: { w: number; h: number }, b: { w: number; h: number }): number {
+  if (a.w <= 0 || a.h <= 0 || b.w <= 0 || b.h <= 0) return 0;
+  
+  // Calculate relative difference for width and height
+  const dw = Math.abs(a.w - b.w) / Math.max(a.w, b.w);
+  const dh = Math.abs(a.h - b.h) / Math.max(a.h, b.h);
+  
+  // Average difference
+  const diff = (dw + dh) / 2;
+  
+  // Return score (1 - diff), clamped to 0..1
+  return Math.max(0, 1 - diff);
+}
+
+/**
+ * Assign window to one screen based on similarity of dimensions.
+ * 1. Try physical screen size (window.screen) match
+ * 2. Fallback to window size (window.innerWidth/Height) match
  */
 export function assignScreenForWindow(args: {
   windowId: string;
   winRect: Rect;
   screens: VflScreen[];
-  scoreEpsilon?: number;
+  physicalScreenSize?: { w: number; h: number };
+  similarityThreshold?: number; // fallback threshold, e.g. 0.8
 }): { screenId: string; score: number } {
-  const { windowId, winRect, screens, scoreEpsilon = 0.01 } = args;
-  const winArea = Math.max(1, area(winRect));
+  const { windowId, winRect, screens, physicalScreenSize, similarityThreshold = 0.8 } = args;
 
-  let best: { screenId: string; score: number; tie: number } | null = null;
-
-  for (const s of screens) {
-    const inter = rectIntersection(winRect, s);
-    const overlap = inter ? area(inter) : 0;
-    const overlapRatio = overlap / winArea;
-
-    let sizeScore: number;
-    // if screen has invalid size, give worst score
-    if (s.w <= 0 || s.h <= 0) {
-      sizeScore = 1;
-    } else {
-      const sizeDist = normalizedSizeDistance({ w: winRect.w, h: winRect.h }, { w: s.w, h: s.h });
-      sizeScore = 1 - sizeDist;
+  // Helper to find best screen for a given target size
+  const findBestScreen = (targetSize: { w: number; h: number }) => {
+    let best = { screenId: screens[0]?.id, score: -1, tie: 0 };
+    
+    for (const s of screens) {
+      const score = calculateDimensionSimilarity(targetSize, { w: s.w, h: s.h });
+      const tie = stableRand01(`${windowId}:${s.id}`);
+      
+      if (score > best.score) {
+        best = { screenId: s.id, score, tie };
+      } else if (score === best.score) { // Exact float match rare, but possible if score is 0 or 1
+        if (tie < best.tie) best = { screenId: s.id, score, tie };
+      }
     }
+    return best;
+  };
 
-    const score = overlap > 0
-      ? overlapRatio
-      : 0.05 * sizeScore;
-
-    const tie = stableRand01(`${windowId}:${s.id}`);
-
-    if (!best) {
-      best = { screenId: s.id, score, tie };
-      continue;
-    }
-
-    if (score > best.score + scoreEpsilon) {
-      best = { screenId: s.id, score, tie };
-    } else if (Math.abs(score - best.score) <= scoreEpsilon) {
-      // tie-break: "random" but stable
-      if (tie < best.tie) best = { screenId: s.id, score, tie };
+  // 1. Try physical screen size if available
+  if (physicalScreenSize && physicalScreenSize.w > 0 && physicalScreenSize.h > 0) {
+    const layoutMatch = findBestScreen(physicalScreenSize);
+    
+    // If good enough match, use it
+    if (layoutMatch.score >= similarityThreshold) {
+      return { screenId: layoutMatch.screenId, score: layoutMatch.score };
     }
   }
 
-  // fallback
-  return best ?? { screenId: screens[0].id, score: 0 };
+  // 2. Fallback: Use window size (winRect)
+  const windowMatch = findBestScreen({ w: winRect.w, h: winRect.h });
+  return { screenId: windowMatch.screenId, score: windowMatch.score };
 }
