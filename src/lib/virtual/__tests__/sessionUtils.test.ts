@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateSessionId, isValidRect } from '../core/sessionUtils';
+import { generateSessionId, isValidRect } from '../engine/EngineSessionUtils';
 import type { Rect } from '../types/types';
 
 describe('sessionUtils', () => {

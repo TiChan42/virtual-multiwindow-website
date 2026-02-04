@@ -4,7 +4,7 @@ import {
   calculateAssignedScreen,
   calculateRelativePosition,
   calculateGlobalPosition
-} from '../core/positioning';
+} from '../engine/EnginePositioning';
 import type { VflScreen, Rect } from '../types/types';
 
 const { mockGetScreenPositionFromUrl, mockGetScreenIdFromUrl } = vi.hoisted(() => ({

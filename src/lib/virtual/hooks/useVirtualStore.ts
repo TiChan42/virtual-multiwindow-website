@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import type { VirtualEngine } from '../core/VirtualEngine';
+import type { VirtualEngine } from '../engine/VirtualEngine';
 import type { VirtualState } from '../types/types';
 
 /**

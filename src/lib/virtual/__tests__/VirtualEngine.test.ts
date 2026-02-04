@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { VirtualEngine } from '../core/VirtualEngine';
+import { VirtualEngine } from '../engine/VirtualEngine';
 import type { Rect, VflLayout } from '../types/types';
 
 // Mock dependencies
@@ -19,7 +19,7 @@ const { mockNetworkAdapter, mockNormalizeLayout, mockGenerateSessionId, mockGetS
   };
 });
 
-vi.mock('../core/NetworkAdapter', () => ({
+vi.mock('../engine/EngineNetworkAdapter', () => ({
   NetworkAdapter: vi.fn(function() { return mockNetworkAdapter; })
 }));
 
@@ -27,11 +27,11 @@ vi.mock('../utils/vfl', () => ({
   normalizeLayout: mockNormalizeLayout
 }));
 
-vi.mock('../core/sessionUtils', () => ({
+vi.mock('../engine/EngineSessionUtils', () => ({
   generateSessionId: mockGenerateSessionId
 }));
 
-vi.mock('../core/positioning', () => ({
+vi.mock('../engine/EnginePositioning', () => ({
   getStaticLayoutFromUrl: mockGetStaticLayoutFromUrl,
   calculateAssignedScreen: mockCalculateAssignedScreen,
   calculateRelativePosition: mockCalculateRelativePosition,
@@ -86,7 +86,7 @@ describe('VirtualEngine', () => {
   describe('handleMessage - HELLO', () => {
     it('adds window to registry', () => {
       const winData = { id: 'win1', rect: { x: 0, y: 0, w: 100, h: 100 } };
-      (engine as any).handleMessage({ 
+      (engine as any).networkSystem.handleMessage({ 
         type: 'HELLO', 
         payload: { ...winData, lastSeen: Date.now(), timestamp: Date.now() } 
       });
@@ -97,13 +97,13 @@ describe('VirtualEngine', () => {
   describe('handleMessage - GOODBYE', () => {
     it('removes window from registry', () => {
       // Setup
-      (engine as any).handleMessage({ 
+      (engine as any).networkSystem.handleMessage({ 
         type: 'HELLO', 
         payload: { id: 'win1', rect: { x: 0, y: 0, w: 100, h: 100 }, lastSeen: Date.now(), timestamp: Date.now() } 
       });
 
       // Act
-      (engine as any).handleMessage({ 
+      (engine as any).networkSystem.handleMessage({ 
         type: 'GOODBYE', 
         payload: { id: 'win1' } 
       });
@@ -133,7 +133,7 @@ describe('VirtualEngine', () => {
 
   describe('handleMessage - SHARED_DATA_UPDATE', () => {
     it('updates shared data store', () => {
-       (engine as any).handleMessage({
+       (engine as any).networkSystem.handleMessage({
         type: 'SHARED_DATA_UPDATE',
         payload: { key: 'foo', value: 'bar' }
       });
@@ -147,7 +147,7 @@ describe('VirtualEngine', () => {
       engine.store.set({ isLeader: false });
       
       const newLayout = { v: 1, frame: { x:0, y:0, w:1000, h:1000 }, screens: [] };
-      (engine as any).handleMessage({
+      (engine as any).networkSystem.handleMessage({
         type: 'LAYOUT_UPDATE',
         payload: newLayout
       });
@@ -160,7 +160,7 @@ describe('VirtualEngine', () => {
        const initialLayout = engine.store.get().layout;
        
        const newLayout = { v: 1, frame: { x:0, y:0, w:1000, h:1000 }, screens: [] };
-       (engine as any).handleMessage({
+       (engine as any).networkSystem.handleMessage({
         type: 'LAYOUT_UPDATE',
         payload: newLayout
       });
@@ -218,7 +218,7 @@ describe('VirtualEngine', () => {
 
     it('handles leader timeout', () => {
       // Simulate another window becoming leader
-      (engine as any).handleMessage({
+      (engine as any).networkSystem.handleMessage({
         type: 'HEARTBEAT',
         payload: { id: 'other-window', rect: { x: 0, y: 0, w: 100, h: 100 }, lastSeen: Date.now(), timestamp: Date.now() }
       });
@@ -238,7 +238,7 @@ describe('VirtualEngine', () => {
        // Assume we are leader
        engine.store.set({ isLeader: true });
        
-       (engine as any).handleMessage({
+       (engine as any).networkSystem.handleMessage({
         type: 'LEADER_CLAIM',
         payload: { id: 'other-leader', timestamp: Date.now() }
        });
@@ -252,7 +252,7 @@ describe('VirtualEngine', () => {
       engine.store.set({ isLeader: true });
       
       const winData = { id: 'win1', rect: { x: 0, y: 0, w: 100, h: 100 } };
-      (engine as any).handleMessage({ 
+      (engine as any).networkSystem.handleMessage({ 
         type: 'HELLO', 
         payload: { ...winData, lastSeen: Date.now(), timestamp: Date.now() } 
       });
@@ -274,7 +274,7 @@ describe('VirtualEngine', () => {
 
        // 3. Add a window with 0 size
        const winData = { id: 'ghost', rect: { x:0, y:0, w:0, h:0 } };
-       (engine as any).handleMessage({
+       (engine as any).networkSystem.handleMessage({
            type: 'HELLO',
             payload: { ...winData, lastSeen: Date.now(), timestamp: Date.now() } 
        });
@@ -299,7 +299,7 @@ describe('VirtualEngine', () => {
       await Promise.resolve();
       await Promise.resolve();
       
-      (engine as any).handleMessage({ 
+      (engine as any).networkSystem.handleMessage({ 
         type: 'HELLO', 
         payload: { id: 'win1', rect: { x: 0, y: 0, w: 100, h: 100 }, lastSeen: Date.now(), timestamp: Date.now() } 
       });
@@ -313,7 +313,7 @@ describe('VirtualEngine', () => {
   });
 
   describe('Static Layout Mode', () => {
-    it('enforces static layout on recalculateWorld (via window join)', () => {
+    it('enforces static layout on recalculateWorld (via window join)', async () => {
        // Mock static layout
        const staticLayout = {
          v: 1,
@@ -321,12 +321,27 @@ describe('VirtualEngine', () => {
          screens: [
            { id: 'screen1', x: 0, y: 0, w: 100, h: 100 }
          ]
-       };
-       (engine as any).staticLayout = staticLayout;
-       engine.store.set({ isLeader: true });
+       } as const; // Cast for type safety if needed
+       
+       // Re-mock return value and create meaningful engine
+       mockGetStaticLayoutFromUrl.mockReturnValue(staticLayout);
+       
+       const staticEngine = new VirtualEngine('static-win', { x:0, y:0, w:800, h:600 });
+       
+       // Wait for async init
+       let ticks = 0;
+       while (!(staticEngine as any).network && ticks < 20) {
+          await Promise.resolve();
+          ticks++;
+       }
+
+       staticEngine.store.set({ isLeader: true });
+
+       // Clear previous broadcast calls (from init)
+       mockNetworkAdapter.broadcast.mockClear();
 
        // Trigger recalculation via HELLO ( simulates new window joining )
-       (engine as any).handleMessage({
+       (staticEngine as any).networkSystem.handleMessage({
          type: 'HELLO',
          payload: { 
             id: 'new-window', 

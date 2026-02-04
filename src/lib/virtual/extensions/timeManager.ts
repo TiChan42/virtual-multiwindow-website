@@ -1,4 +1,4 @@
-import type { VirtualEngine } from "../core/VirtualEngine";
+import type { VirtualEngine } from "../engine/VirtualEngine";
 
 type TimeEvent =
   | { t: "timer_start"; id: string; duration: number; timestamp: number }

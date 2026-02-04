@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { TimeManager } from '../extensions/timeManager';
-import type { VirtualEngine } from '../core/VirtualEngine';
+import type { VirtualEngine } from '../engine/VirtualEngine';
 
 describe('TimeManager', () => {
   let timeManager: TimeManager;

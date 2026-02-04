@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { NetworkAdapter } from '../core/NetworkAdapter';
+import { NetworkAdapter } from '../engine/EngineNetworkAdapter';
 import type { VirtualEvent } from '../types/types';
 
 // Mock BroadcastChannel

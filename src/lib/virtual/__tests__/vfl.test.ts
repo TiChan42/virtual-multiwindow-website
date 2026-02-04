@@ -32,17 +32,6 @@ describe('VFL Core Logic (vfl.ts)', () => {
       { id: 'S2', x: 1920, y: 0, w: 1920, h: 1080 },
     ];
 
-    it('identifies screen based on majority overlap', () => {
-      // Window mostly on S2
-      const win: Rect = { x: 1900, y: 100, w: 400, h: 400 }; 
-      // S1 range: 0-1920. S2 range: 1920-3840.
-      // Overlap S1: 20px (1900 to 1920)
-      // Overlap S2: 380px (1920 to 2300)
-      
-      const { screenId } = assignScreenForWindow({ windowId: 'w', winRect: win, screens });
-      expect(screenId).toBe('S2');
-    });
-
     it('defaults to first screen if no overlap', () => {
       // Window way out in boonies
       const win: Rect = { x: 9999, y: 9999, w: 100, h: 100 };

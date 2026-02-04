@@ -1,5 +1,5 @@
 import { getThisWindowID } from "../utils/windowId";
-import type { VirtualEngine } from "../core/VirtualEngine";
+import type { VirtualEngine } from "../engine/VirtualEngine";
 
 type CustomEventData = { type: string; data?: unknown; timestamp: number; senderId: string };
 

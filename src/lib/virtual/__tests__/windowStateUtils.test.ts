@@ -7,12 +7,13 @@ import {
 import type { VflLayout } from '@/lib/virtual/types/types';
 
 // Mock Data
+// Use distinct sizes for S1 and S2 to allow deterministic auto-detection by size
 const mockLayout: VflLayout = {
   v: 1,
-  frame: { x: 0, y: 0, w: 3840, h: 1080 },
+  frame: { x: 0, y: 0, w: 3200, h: 1080 },
   screens: [
     { id: 'S1', x: 0, y: 0, w: 1920, h: 1080 },
-    { id: 'S2', x: 1920, y: 0, w: 1920, h: 1080 }
+    { id: 'S2', x: 1920, y: 0, w: 1280, h: 720 }
   ]
 };
 
@@ -23,20 +24,20 @@ describe('Window Logic (windowStateUtils)', () => {
 
   describe('resolveScreenAssignment', () => {
     it('PRIORITY Handling: URL > Auto', () => {
-      // Window is fully in S2, but URL forces S1
-      const winRect = { x: 2000, y: 100, w: 500, h: 500 };
+      // Window size matches S2 (1280x720), but URL forces S1
+      const winRect = { x: 2000, y: 100, w: 1280, h: 720 };
       expect(resolveScreenAssignment(mockLayout, winRect, 'S1')).toBe('S1');
     });
 
-    it('fallback to auto-detection if URL is missing', () => {
-      const winRect = { x: 2000, y: 100, w: 500, h: 500 };
-      // Should find S2 because 2000 > 1920
+    it('fallback to auto-detection based on dimensions if URL is missing', () => {
+      // Window size matches S2 (1280x720) exactly
+      const winRect = { x: 0, y: 0, w: 1280, h: 720 };
       expect(resolveScreenAssignment(mockLayout, winRect, null)).toBe('S2');
     });
 
-    it('handles unknown screens gracefully (defaults safely)', () => {
-      // If logic falls back to center point
-      const winRect = { x: 100, y: 100, w: 500, h: 500 };
+    it('handles unknown screens gracefully (defaults to best fit S1)', () => {
+      // Window size matches S1 (1920x1080) exactly
+      const winRect = { x: 0, y: 0, w: 1920, h: 1080 };
       expect(resolveScreenAssignment(mockLayout, winRect, null)).toBe('S1');
     });
   });

@@ -1,6 +1,6 @@
 import { useEffect, useState, useContext } from 'react';
 import { VirtualCtx } from './virtualContext';
-import type { VirtualEngine } from '../core/VirtualEngine';
+import type { VirtualEngine } from '../engine/VirtualEngine';
 
 type InputEvent =
   | { type: 'keydown'; key: string; windowId: string; timestamp: number; }

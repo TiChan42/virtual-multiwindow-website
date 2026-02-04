@@ -2,7 +2,7 @@
 
 import React, { useContext, useEffect, useState } from "react";
 import { VirtualCtx } from "@/lib/virtual/extensions/virtualContext";
-import type { VirtualEngine } from "@/lib/virtual/core/VirtualEngine";
+import type { VirtualEngine } from "@/lib/virtual/engine/VirtualEngine";
 
 type Particle = {
   id: string;

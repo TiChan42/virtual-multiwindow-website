@@ -38,9 +38,6 @@ export function normalizeLayout(layout: Omit<VflLayout, "frame"> & { frame?: Rec
   return normalized;
 }
 
-// base64url helpers
-// removed unused functions
-
 /**
  * URL-Format: layout=vfl1.<urlencoded(json)>
  */
@@ -131,7 +128,7 @@ export function assignScreenForWindow(args: {
 }): { screenId: string; score: number } {
   const { windowId, winRect, screens, physicalScreenSize, similarityThreshold = 0.8 } = args;
 
-  // Helper to find best screen for a given target size
+  // 1. Fallback: Try physical screen size if available (Dimension Matching)
   const findBestScreen = (targetSize: { w: number; h: number }) => {
     let best = { screenId: screens[0]?.id, score: -1, tie: 0 };
     

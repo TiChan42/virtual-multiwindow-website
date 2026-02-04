@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { EventManager } from '../extensions/eventManager';
-import type { VirtualEngine } from '../core/VirtualEngine';
+import type { VirtualEngine } from '../engine/VirtualEngine';
 
 describe('EventManager', () => {
   let eventManager: EventManager;

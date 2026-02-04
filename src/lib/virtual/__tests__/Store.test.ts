@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { Store } from '../core/Store';
+import { Store } from '../engine/EngineStore';
 
 describe('Store', () => {
   let store: Store<{ count: number; name: string }>;

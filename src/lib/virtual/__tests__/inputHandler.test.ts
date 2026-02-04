@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useVirtualInputs } from '../extensions/inputHandler';
-import type { VirtualEngine } from '../core/VirtualEngine';
+import type { VirtualEngine } from '../engine/VirtualEngine';
 
 // Mock VirtualCtx
 const mockCtx = {

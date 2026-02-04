@@ -6,7 +6,7 @@ import { Minimap } from "./Minimap";
 
 import type { VirtualContext } from "@/lib/virtual/types/types";
 import { VirtualCtx } from "@/lib/virtual/extensions/virtualContext";
-import { VirtualEngine } from "@/lib/virtual/core/VirtualEngine";
+import { VirtualEngine } from "@/lib/virtual/engine/VirtualEngine";
 import { useVirtualState } from "@/lib/virtual/hooks/useVirtualStore";
 import { getThisWindowID } from "@/lib/virtual/utils/windowId";
 import { getCurrentWindowRect } from "@/lib/virtual/extensions/utils";
